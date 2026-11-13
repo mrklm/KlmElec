@@ -6,7 +6,7 @@ class ElecDistrib(Connector):
     host = 'www.elecdistrib.fr'
     links = {
         '411633': ProductLink('https://www.elecdistrib.fr/tableaux-composants/657-interrupteur-differentiel-63a-type-ac-3-modules-legrand-ref-411633-3245064116336.html', 'LEG-411633', '3245064116336', 1),
-        '406774': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/372-lot-de-10-x-16a-legrand-ref-406774-3245064067744.html', 'LEG-406774x10', '3245064067744', 10),
+        '406774': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/74-disjoncteur-phase-neutre-dnx3-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-16a-courbe-c-legrand-ref-406774-3245064067744.html', 'LEG-406774', '3245064067744', 1),
         '411617': ProductLink('https://www.elecdistrib.fr/interrupteurs-differentiels-legrand/69-dx3-40a-type-a-legrand-ref-411617-3245064116176.html', 'LEG-411617', '3245064116176', 1),
         '411638': ProductLink('https://www.elecdistrib.fr/interrupteurs-differentiels-legrand/71-interrupteur-differentiel-dx-id-arrivee-haut-visdepart-haut-auto-2p-230v-40a-type-a-30-ma-2-modules-legrand-ref-411638-3245064116381.html', 'LEG-411638', '3245064116381', 1),
     }

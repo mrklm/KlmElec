@@ -108,7 +108,11 @@ def test_timeout_unknown_and_disabled_supplier():
     assert run(success, suppliers=[]) == []
 
 
-def test_lot_and_unknown_reference_never_requested():
+def test_lot_and_unknown_reference_never_requested(monkeypatch):
+    from dataclasses import replace
+    connector = CONNECTORS['elecdistrib']
+    monkeypatch.setattr(connector, 'links', dict(connector.links, **{
+        '406774': replace(connector.links['406774'], pack=10, sku='LEG-406774x10')}))
     items, suppliers = inputs('406774')
     def handler(request):
         raise AssertionError('Aucune requête attendue pour un lot exclu')
@@ -232,3 +236,25 @@ def test_411633_is_compared_by_exact_reference():
     connector = CONNECTORS['123elec']
     with pytest.raises(OfferError):
         connector.parse(document(ref='411633').replace('411633', '411650'), '411633', connector.links['411633'])
+
+
+def test_406774_unit_offer_and_lot_rejection():
+    items, suppliers = inputs('406774')
+    connector = CONNECTORS['elecdistrib']
+    link = connector.links['406774']
+    assert link.pack == 1 and link.sku == 'LEG-406774'
+    assert '/74-' in link.url and 'lot-de-10' not in link.url
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='User-agent: *\nAllow: /')
+        key = '123elec' if request.url.host=='www.123elec.com' else 'elecdistrib'
+        assert str(request.url) == CONNECTORS[key].links['406774'].url
+        return httpx.Response(200, text=document(key, ref='406774', price='7.50'))
+    results = run(handler, items=items, suppliers=suppliers)
+    assert all(o['status']=='ok' for o in results)
+    assert best_offer(results) is not None
+    lot = document('elecdistrib',ref='406774').replace('<h1>Legrand', '<h1>Lot de 10 Legrand')
+    with pytest.raises(OfferError):
+        connector.parse(lot, '406774', link)
+    with pytest.raises(OfferError):
+        connector.parse(document('elecdistrib',ref='406774',sku='LEG-406774x10'), '406774', link)

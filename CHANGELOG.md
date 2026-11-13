@@ -1,5 +1,10 @@
 # Historique
 
+## 0.3.1 — 2026-11-13
+
+- Corrige l’association Elec Distrib de la référence 406774 : utilise la fiche unitaire au lieu du lot de dix.
+- Maintient les contrôles de conditionnement et la protection contre la confusion unité/lot.
+
 ## 0.3.0 — 2026-11-13
 
 - Affiche une colonne de prix TTC par fournisseur actif et encadre les minima confirmés en rouge, égalités comprises.

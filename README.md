@@ -28,9 +28,9 @@ Annuler attend la fin de la requête en cours ; fermer la fenêtre demande aussi
 
 Le minimum est validé uniquement si tous les fournisseurs activés renvoient une offre
 unitaire disponible et comparable. Un fournisseur sans connecteur, un échec, une
-rupture ou un lot empêche donc de déclarer un minimum pour cette ligne. Le lot de dix
-406774 d'Elec Distrib est exclu : aucun total complet si cette ligne figure dans la liste
-avec ce fournisseur actif. Les offres obtenues restent consultables individuellement.
+rupture ou un lot empêche donc de déclarer un minimum pour cette ligne. La référence
+406774 est associée à la fiche unitaire d'Elec Distrib, distincte du lot de dix.
+Les offres obtenues restent consultables individuellement.
 
 Le total du projet n'est affiché que lorsque toutes les lignes sont comparées. Les
 calculs utilisent Decimal, avec arrondi au centime, hors livraison. Le TTC provient du
