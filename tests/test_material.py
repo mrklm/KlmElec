@@ -138,6 +138,68 @@ def test_locations_ui_and_tree_expansion(store, app):
     window.close()
 
 
+def test_manual_offer_updates_frame_and_totals(store, app):
+    store.add_item(store.products()[0]['id'], 3)
+    window = MainWindow(store, 'test')
+    model = window.material_model
+    model.offers = offers(model, ('7.50', '6.85'))
+    model.offers[0]['cached'] = True
+    model.refresh_prices()
+    assert window.total_label.text() == 'Total TTC\n20,55 €'
+    assert model.index(0, 5).data() == '7,50 €'
+    assert model.select_offer(model.index(0, 5))
+    assert model.index(0, 5).data(BEST_PRICE_ROLE)
+    assert not model.index(0, 6).data(BEST_PRICE_ROLE)
+    assert model.index(0, 8).data() == '22,50 €'
+    assert model.index(0, 7).data() == '18,75 €'
+    assert window.total_label.text() == 'Total TTC\n22,50 €'
+    assert '22,50' in window.summary.text()
+    model.setData(model.index(0, 3), 4)
+    assert window.total_label.text() == 'Total TTC\n30,00 €'
+    # A moved supplier column still selects its logical supplier.
+    header = window.material_table.header()
+    assert header.sectionsMovable() and header.isFirstSectionMovable()
+    header.moveSection(header.visualIndex(5), 7)
+    assert header.logicalIndex(7) == 5
+    header.resizeSection(5, 220)
+    window.material_table.clicked.emit(model.index(0, 6))
+    assert window.total_label.text() == 'Total TTC\n27,40 €'
+    model.refresh()
+    assert header.sectionSize(5) == 220
+    assert header.visualIndex(5) == 7
+    window.invalidate_comparison()
+    assert not model.selected_suppliers
+    assert window.total_label.text() == 'Total TTC\nIncomplet'
+    window.close()
+
+
+def test_manual_choice_rejects_invalid_offers_and_counts_ties_once(store, app):
+    store.add_item(store.products()[0]['id'], 2)
+    window = MainWindow(store, 'test')
+    model = window.material_model
+    model.offers = offers(model, ('10.00', '10.00'))
+    model.refresh_prices()
+    assert window.total_label.text() == 'Total TTC\n20,00 €'
+    assert all(model.index(0, col).data(BEST_PRICE_ROLE) for col in (5, 6))
+    assert model.select_offer(model.index(0, 5))
+    assert not model.index(0, 6).data(BEST_PRICE_ROLE)
+    assert not model.select_offer(model.index(0, 5, model.index(0, 0)))
+    assert not model.select_offer(model.index(0, 3))
+    model.offers[1]['status'] = 'error'
+    assert not model.select_offer(model.index(0, 6))
+    # Explicit choice stays usable even if the other supplier failed.
+    assert model.selected_offer(model.rows[0]) == model.offers[0]
+    model.offers[0]['checked_at'] = (datetime.now(timezone.utc)-timedelta(minutes=6)).isoformat()
+    model.refresh_prices()
+    assert not model.select_offer(model.index(0, 5))
+    assert not model.index(0, 5).data(BEST_PRICE_ROLE)
+    assert window.total_label.text() == 'Total TTC\nIncomplet'
+    store.clear_list()
+    model.refresh()
+    assert window.total_label.text() == 'Total TTC\n0,00 €'
+    window.close()
+
+
 def test_old_database_gets_unassigned_units_without_changing_history(tmp_path):
     import sqlite3
     path = tmp_path/'old.sqlite3'

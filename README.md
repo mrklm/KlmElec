@@ -1,7 +1,7 @@
 # KlmElec
 
 Application de bureau Python/PySide6 pour préparer et comparer une liste de matériel électrique.
-Version actuelle : **0.4.1**, définie dans `VERSION` et affichée dans la barre de titre.
+Version actuelle : **0.5.0**, définie dans `VERSION` et affichée dans la barre de titre.
 
 ## Installation et lancement
 
@@ -19,10 +19,13 @@ Pour les lancements suivants : `.venv/bin/python -m klmelec`.
 ## Utilisation
 
 - **Matériel** : recherche par mots, marque ou référence dans un catalogue de 27 articles ; quantités modifiables, regroupement par référence et affectation des lieux par exemplaire.
-- **Comparer les prix** : prix unitaires TTC par fournisseur actif, minimum confirmé encadré en rouge, TVA configurable pour le calcul du HT. Les montants sont hors livraison.
+- **Comparer les prix** : minimum confirmé retenu par défaut ; cliquez sur un autre prix valide pour choisir le fournisseur, même plus cher. Le cadre rouge et les totaux suivent ce choix.
+- **Tableau** : colonnes déplaçables et redimensionnables ; total TTC en bas à droite, quantités comprises et hors livraison. TVA configurable pour le calcul du HT.
 - **Paramètres** : sections Apparence, Lieux, Fournisseurs, Offres et historique et Listes.
 - **Apparence** : 16 thèmes ; options de persistance et de sélection aléatoire au lancement, décochées par défaut. Le mode aléatoire est prioritaire si les deux sont activés.
 - **?** : aide détaillée sur les fonctions de l’application.
+
+Le total indique **Incomplet** si une référence n’a pas d’offre valide retenue. Les égalités ne sont comptées qu’une fois. Une nouvelle comparaison rétablit les choix automatiques ; les choix de fournisseurs ne sont pas enregistrés dans les fichiers de listes.
 
 ## Listes et données
 

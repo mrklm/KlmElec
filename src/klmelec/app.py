@@ -162,14 +162,25 @@ class MainWindow(QMainWindow):
         self.material_table.setAlternatingRowColors(True)
         self.material_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.material_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.material_table.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.material_table.header().setSectionResizeMode(QHeaderView.Interactive)
+        self.material_table.header().setSectionsMovable(True)
+        self.material_table.header().setFirstSectionMovable(True)
+        self.material_table.header().setDefaultSectionSize(160)
+        self.material_table.header().setMinimumSectionSize(90)
+        for column, width in enumerate([290, 130, 140, 110, 180]):
+            self.material_table.setColumnWidth(column, width)
         self.material_table.header().setStretchLastSection(False)
         self.material_table.setItemDelegate(MaterialDelegate(self.material_table))
         self.material_table.clicked.connect(self.edit_place)
+        self.material_table.clicked.connect(self.material_model.select_offer)
         self.expanded_products = set()
         self.material_model.modelAboutToBeReset.connect(self.save_expansion)
         self.material_model.modelReset.connect(self.restore_expansion)
         layout.addWidget(self.material_table)
+        footer = QHBoxLayout()
+        footer_controls = QVBoxLayout()
+        footer.addLayout(footer_controls, 1)
+        layout.addLayout(footer)
         bottom = QHBoxLayout()
         self.remove = QPushButton('Supprimer la sélection')
         self.remove.clicked.connect(self.remove_item)
@@ -182,7 +193,7 @@ class MainWindow(QMainWindow):
         self.cancel_button.clicked.connect(self.cancel_comparison)
         bottom.addWidget(self.cancel_button)
         bottom.addStretch()
-        layout.addLayout(bottom)
+        footer_controls.addLayout(bottom)
         settings = QHBoxLayout()
         settings.addWidget(QLabel('TVA pour le HT calculé (%)'))
         self.vat = QDoubleSpinBox()
@@ -194,9 +205,16 @@ class MainWindow(QMainWindow):
         self.force_refresh = QCheckBox('Actualiser même si un relevé date de moins de 5 minutes')
         settings.addWidget(self.force_refresh)
         settings.addStretch()
-        layout.addLayout(settings)
+        footer_controls.addLayout(settings)
         self.summary = QLabel()
-        layout.addWidget(self.summary)
+        self.summary.setWordWrap(True)
+        footer_controls.addWidget(self.summary)
+        self.total_label = QLabel('Total TTC\n0,00 €')
+        self.total_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_label.setMinimumWidth(240)
+        self.total_label.setStyleSheet('font-size: 26px; font-weight: 600; padding: 16px; border: 2px solid palette(mid); border-radius: 6px;')
+        self.total_label.setToolTip('Somme des offres retenues multipliées par les quantités. Hors livraison.')
+        footer.addWidget(self.total_label, 0, Qt.AlignBottom)
         tabs.addTab(material, 'Matériel')
 
         suppliers = QWidget()
@@ -319,8 +337,14 @@ class MainWindow(QMainWindow):
                 Un fournisseur ajouté nécessite un connecteur compatible pour récupérer ses prix.</li>
                 <li>Dans <b>Matériel</b>, cliquez sur <b>Comparer les prix</b>.
                 Vous pouvez annuler une recherche en cours.</li>
-                <li>Les colonnes affichent les prix unitaires TTC. Le liseré rouge indique
-                le minimum confirmé, égalités incluses. Les lots sont exclus du minimum unitaire.</li>
+                <li>Les colonnes affichent les prix unitaires TTC. Par défaut, le liseré rouge indique
+                le minimum confirmé, égalités incluses. Cliquez sur un autre prix valide pour retenir
+                cette offre, même plus chère : le cadre rouge suit votre choix.</li>
+                <li>Le total TTC en bas à droite additionne les offres retenues, multipliées par les
+                quantités. Les égalités ne sont comptées qu’une fois. « Incomplet » indique qu’il manque
+                une offre valide. Une nouvelle comparaison rétablit les choix automatiques.</li>
+                <li>Déplacez les colonnes en faisant glisser leur en-tête et ajustez leur largeur
+                en tirant leurs séparations. Les lots restent exclus du minimum unitaire.</li>
                 <li>Survolez une offre pour voir sa date et son statut.
                 Consultez les détails des relevés dans <b>Paramètres → Offres et historique</b>.</li>
                 <li>Le taux de TVA sert au calcul du HT. Cochez l’actualisation pour renouveler
@@ -365,6 +389,7 @@ class MainWindow(QMainWindow):
         self.load_history()
         self.statusBar().showMessage(f'Données locales : {location}')
         self.material_model.modelReset.connect(self.update_summary)
+        self.material_model.dataChanged.connect(self.update_summary)
         self.update_summary()
         self.freshness_timer = QTimer(self)
         self.freshness_timer.setInterval(30000)
@@ -433,6 +458,7 @@ class MainWindow(QMainWindow):
             self.show_report()
 
     def invalidate_comparison(self):
+        self.material_model.selected_suppliers.clear()
         self.material_model.offers = []
         self.current_payload = None
         self.material_model.refresh()
@@ -475,6 +501,7 @@ class MainWindow(QMainWindow):
             # Newest observations first: cache_lookup scans in reverse.
             for _, payload in reversed(self.store.comparisons()):
                 previous.extend(payload['offers'])
+        self.material_model.selected_suppliers.clear()
         self.material_model.offers = []
         self.material_model.refresh()
         self.pending_payload = dict(date=now(), vat=str(self.vat.value()), items=items, offers=[])
@@ -600,15 +627,20 @@ class MainWindow(QMainWindow):
         rows = self.material_model.rows
         totals = []
         for row in rows:
-            winner = self.material_model.winner(row)
+            winner = self.material_model.selected_offer(row)
             if winner:
                 totals.append(amounts(winner['ttc'], row['quantity'], self.material_model.vat)[2:])
         if rows and len(totals) == len(rows):
             ht = sum((t[0] for t in totals), Decimal(0))
             ttc = sum((t[1] for t in totals), Decimal(0))
             text = f'Total HT calculé : {euros(ht)} · Total TTC : {euros(ttc)}'
+            self.total_label.setText(f'Total TTC\n{euros(ttc)}')
+        elif not rows:
+            text = 'Liste vide'
+            self.total_label.setText('Total TTC\n0,00 €')
         else:
-            text = f'Total non disponible — {len(totals)}/{len(rows)} référence(s) comparée(s) intégralement'
+            text = f'Total non disponible — {len(totals)}/{len(rows)} référence(s) avec une offre retenue'
+            self.total_label.setText('Total TTC\nIncomplet')
         self.summary.setText(f'{len(rows)} référence(s) · {text}. Hors livraison.')
 
     def add_item(self):

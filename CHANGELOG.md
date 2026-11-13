@@ -1,5 +1,14 @@
 # Historique
 
+## 0.5.0 — 2026-11-13
+
+- Aère les cellules du tableau Matériel et rend les colonnes déplaçables et redimensionnables.
+- Permet de retenir une offre par clic, même plus chère, avec déplacement du cadre rouge et recalcul des totaux HT/TTC selon les quantités.
+- Affiche un total TTC en bas à droite, adapté au thème ; signale les listes incomplètes et évite le double comptage des égalités.
+- Retire la mention du cache après les prix ; conserve les informations de date et de statut au survol.
+- Rétablit la sélection automatique à chaque nouvelle comparaison ; refuse la sélection d’une offre en erreur ou périmée.
+- Met à jour l’aide et vérifie le choix manuel, les quantités, les égalités et le déplacement des colonnes : 66 tests automatisés passent.
+
 ## 0.4.1 — 2026-11-13
 
 - Configure les fiches unitaires Legrand 406771 (2A), 406773 (10A), 406775 (20A) et 406777 (32A) chez 123 Elec et Elec Distrib, portant la couverture à huit références par fournisseur.

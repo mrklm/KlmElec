@@ -1,9 +1,9 @@
 """Tableau arborescent : références, exemplaires, lieux et offres par fournisseur."""
 from decimal import Decimal
 
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, QSize
 from PySide6.QtGui import QColor, QPen
-from PySide6.QtWidgets import QComboBox, QSpinBox, QStyledItemDelegate
+from PySide6.QtWidgets import QComboBox, QSpinBox, QStyledItemDelegate, QStyleOptionViewItem
 
 from .comparison import best_offer, amounts, is_recent
 from .comparison_ui import euros, local_date
@@ -16,6 +16,7 @@ class MaterialModel(QAbstractItemModel):
         super().__init__()
         self.store = store
         self.offers = []
+        self.selected_suppliers = {}
         self.vat = store.vat()
         self.load()
 
@@ -73,6 +74,30 @@ class MaterialModel(QAbstractItemModel):
             return None
         return best_offer(offers)
 
+    def selected_offer(self, row):
+        if row['id'] not in self.selected_suppliers:
+            return self.winner(row)
+        supplier_id = self.selected_suppliers[row['id']]
+        return next((offer for offer in self.offers_for(row)
+                     if offer['supplier_id'] == supplier_id and self.selectable_offer(offer)), None)
+
+    @staticmethod
+    def selectable_offer(offer):
+        return offer['status'] == 'ok' and offer['ttc'] is not None and is_recent(offer)
+
+    def select_offer(self, index):
+        if (not index.isValid() or index.internalId()
+                or not 5 <= index.column() < 5 + len(self.suppliers)):
+            return False
+        row = self.item(index)
+        supplier_id = self.suppliers[index.column()-5]['id']
+        offer = next((o for o in self.offers_for(row) if o['supplier_id'] == supplier_id), None)
+        if not offer or not self.selectable_offer(offer):
+            return False
+        self.selected_suppliers[row['id']] = supplier_id
+        self.dataChanged.emit(self.index(index.row(), 5), self.index(index.row(), self.columnCount()-1))
+        return True
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
@@ -92,14 +117,17 @@ class MaterialModel(QAbstractItemModel):
                     1 if child else row['quantity']][col]
         if child:
             return None
-        winner = self.winner(row)
+        winner = self.selected_offer(row)
         if 5 <= col < 5 + len(self.suppliers):
             supplier = self.suppliers[col-5]
             offer = next((o for o in self.offers_for(row) if o['supplier_id'] == supplier['id']), None)
             if role == BEST_PRICE_ROLE:
+                if row['id'] in self.selected_suppliers:
+                    return bool(winner and offer and offer['supplier_id'] == winner['supplier_id'])
                 return bool(winner and offer and Decimal(offer['ttc']) == Decimal(winner['ttc']))
             if role == Qt.ToolTipRole and offer:
-                return f"{offer['detail']}\n{local_date(offer['checked_at'])}\n{offer['url']}"
+                hint = '\nCliquez pour retenir cette offre dans le total.' if self.selectable_offer(offer) else ''
+                return f"{offer['detail']}\n{local_date(offer['checked_at'])}\n{offer['url']}" + hint
             if role == Qt.DisplayRole:
                 if not offer:
                     return '—'
@@ -110,7 +138,7 @@ class MaterialModel(QAbstractItemModel):
                     return label + ' · ' + offer['detail']
                 if not is_recent(offer):
                     return label + ' · ancien'
-                return label + (' · cache' if offer.get('cached') else '')
+                return label
         if role == Qt.DisplayRole and col >= 5 + len(self.suppliers):
             if not winner:
                 return '—'
@@ -149,6 +177,9 @@ class MaterialModel(QAbstractItemModel):
     def refresh(self):
         self.beginResetModel()
         self.load()
+        self.selected_suppliers = {pid: sid for pid, sid in self.selected_suppliers.items()
+                                   if any(row['id'] == pid for row in self.rows)
+                                   and any(s['id'] == sid for s in self.suppliers)}
         self.endResetModel()
 
     def refresh_prices(self):
@@ -157,6 +188,9 @@ class MaterialModel(QAbstractItemModel):
 
 
 class MaterialDelegate(QStyledItemDelegate):
+    def sizeHint(self, option, index):
+        return super().sizeHint(option, index) + QSize(24, 8)
+
     def createEditor(self, parent, option, index):
         if index.column() == 4:
             editor = QComboBox(parent)
@@ -194,7 +228,9 @@ class MaterialDelegate(QStyledItemDelegate):
             super().setModelData(editor, model, index)
 
     def paint(self, painter, option, index):
-        super().paint(painter, option, index)
+        padded = QStyleOptionViewItem(option)
+        padded.rect = option.rect.adjusted(10, 0, -10, 0)
+        super().paint(painter, padded, index)
         if index.data(BEST_PRICE_ROLE):
             painter.save()
             painter.setPen(QPen(QColor('#d71920'), 2))
