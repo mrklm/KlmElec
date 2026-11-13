@@ -53,7 +53,7 @@ def test_list_roundtrip(tmp_path):
 def test_supplier_lifecycle(tmp_path):
     path = tmp_path / 'test.sqlite3'
     db = Store(path)
-    assert len(db.suppliers()) == 2
+    assert len(db.suppliers()) == 3
     db.save_supplier('Nouveau', 'https://example.org', False)
     supplier = next(s for s in db.suppliers() if s['name'] == 'Nouveau')
     assert not supplier['active']
@@ -68,7 +68,29 @@ def test_supplier_lifecycle(tmp_path):
     db.close()
     db = Store(path)
     assert not db.suppliers()  # Initial suppliers must not reappear after removal.
-    assert db.db.execute('SELECT count(*) FROM suppliers').fetchone()[0] == 3
+    assert db.db.execute('SELECT count(*) FROM suppliers').fetchone()[0] == 4
+    db.close()
+
+
+def test_yesss_added_once_to_existing_database(tmp_path):
+    path = tmp_path / 'suppliers.sqlite3'
+    db = Store(path)
+    with db.db:
+        db.db.execute("DELETE FROM settings WHERE key='supplier_yesss_v1'")
+        db.db.execute("DELETE FROM suppliers WHERE name='YESSS Électrique'")
+    db.close()
+    db = Store(path)
+    yesss = next(s for s in db.suppliers() if s['name'] == 'YESSS Électrique')
+    assert yesss['url'] == 'https://www.yesss-fr.com/'
+    assert not yesss['active'] and yesss['connector'] is None
+    db.archive_supplier(yesss['id'])
+    # An existing archived entry is respected even during the one-time upgrade.
+    with db.db:
+        db.db.execute("DELETE FROM settings WHERE key='supplier_yesss_v1'")
+    db.close()
+    db = Store(path)
+    assert all(s['id'] != yesss['id'] for s in db.suppliers())
+    assert db.db.execute("SELECT count(*) FROM suppliers WHERE name='YESSS Électrique'").fetchone()[0] == 1
     db.close()
 
 
@@ -100,7 +122,7 @@ def test_window_workflow(app, store, monkeypatch):
     window.material_table.setCurrentIndex(window.material_model.index(0, 0))
     window.remove_item()
     assert not store.items()
-    assert window.supplier_model.rowCount() == 2
+    assert window.supplier_model.rowCount() == 3
     window.close()
 
 
@@ -114,7 +136,7 @@ def test_settings_sections_and_theme_persistence(app, tmp_path):
     window.show()
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', '?']
     assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
-        'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes']
+        'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison']
     assert window.theme_selector.currentText() == DEFAULT_THEME
     assert window.theme_selector.count() == 16
     assert not window.persistent_themes.isChecked()
@@ -153,6 +175,8 @@ def test_save_and_load_list_buttons(app, store, tmp_path, monkeypatch):
     store.add_item(store.products()[0]['id'], 3, store.locations()[0]['id'])
     expected = store.export_list()
     window = MainWindow(store, 'test')
+    comparisons = []
+    monkeypatch.setattr(window, 'start_comparison', lambda: comparisons.append(store.export_list()))
     assert max(window.header_icon.pixmap().width(), window.header_icon.pixmap().height()) == 96
     monkeypatch.setattr(QFileDialog, 'getSaveFileName', lambda *args: (str(path), ''))
     window.save_list_button.click()
@@ -162,9 +186,11 @@ def test_save_and_load_list_buttons(app, store, tmp_path, monkeypatch):
     monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.No)
     window.load_list_button.click()
     assert store.items()[0]['quantity'] == 7
+    assert not comparisons
     monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.Yes)
     window.load_list_button.click()
     assert store.export_list() == expected
+    assert comparisons == [expected]
     assert window.material_model.rowCount() == 1
     assert window.tabs.currentIndex() == 0
     warnings = []
@@ -173,6 +199,21 @@ def test_save_and_load_list_buttons(app, store, tmp_path, monkeypatch):
     window.load_list_button.click()
     assert warnings
     assert store.export_list() == expected
+    assert comparisons == [expected]
+    monkeypatch.setattr(QFileDialog, 'getOpenFileName', lambda *args: ('', ''))
+    window.load_list_button.click()
+    assert comparisons == [expected]
+    monkeypatch.setattr(QFileDialog, 'getOpenFileName', lambda *args: (str(path), ''))
+    import json
+    path.write_text(json.dumps(expected))
+    for supplier in store.suppliers():
+        store.save_supplier(supplier['name'], supplier['url'], False, supplier['id'])
+    window.load_list_button.click()
+    assert comparisons == [expected]
+    path.write_text(json.dumps(dict(expected, items=[])))
+    window.load_list_button.click()
+    assert not store.items()
+    assert comparisons == [expected]
     window.close()
 
 
@@ -222,6 +263,134 @@ def test_cancel_save_file_keeps_window_open(app, store, monkeypatch):
     assert window.isVisible()
     assert store.items()
     store.clear_list()
+    window.close()
+
+
+def test_shipping_thresholds_per_supplier(app, store):
+    window = MainWindow(store, 'test')
+    panel = window.shipping_panel
+    assert 'non renseigné' in panel.message.text()
+    first = panel.edit_supplier.currentData()
+    panel.known.setChecked(True)
+    panel.threshold.setValue(250)
+    panel.basis.setCurrentText('HT')
+    panel.conditions.setText('Point relais uniquement')
+    panel.save_button.click()
+    assert '250,00 € HT' in panel.message.text()
+    assert panel.message.toolTip() == 'Point relais uniquement'
+    assert window.total_label.text() == 'Total TTC\n0,00 €'
+    panel.supplier.setCurrentIndex(1)
+    assert 'non renseigné' in panel.message.text()
+    panel.edit_supplier.setCurrentIndex(1)
+    assert not panel.known.isChecked()
+    panel.known.setChecked(True)
+    panel.threshold.setValue(150)
+    panel.save_button.click()
+    assert '150,00 € TTC' in panel.message.text()
+    window.close()
+    window = MainWindow(store, 'test')
+    panel = window.shipping_panel
+    assert panel.rule(first)['threshold'] == '250.0'
+    assert '250,00 € HT' in panel.message.text()
+    panel.known.setChecked(False)
+    panel.save_button.click()
+    assert 'non renseigné' in panel.message.text()
+    for supplier in store.suppliers():
+        store.archive_supplier(supplier['id'])
+    window.supplier_model.refresh()
+    assert panel.message.text() == 'Aucun fournisseur'
+    assert not panel.save_button.isEnabled()
+    window.close()
+
+
+def test_list_shortcut_and_file_grid(app, store, tmp_path, monkeypatch):
+    import json
+    from PySide6.QtTest import QTest
+
+    store.add_item(store.products()[0]['id'], 3)
+    payload = store.export_list()
+    (tmp_path / 'fred.json').write_text(json.dumps(payload))
+    (tmp_path / 'isa.JSON').write_text(json.dumps(payload))
+    (tmp_path / 'notes.txt').write_text('not a list')
+    (tmp_path / 'directory.json').mkdir()
+    store.clear_list()
+    store.save_setting('lists_directory', tmp_path)
+    window = MainWindow(store, 'test')
+    calls = []
+    monkeypatch.setattr(window, 'start_comparison', lambda: calls.append(True))
+    window.show()
+    window.lists_shortcut.click()
+    app.processEvents()
+    assert window.tabs.currentIndex() == 1
+    assert window.settings_sections.currentWidget() == window.lists_page
+    assert not window.lists_shortcut.icon().isNull()
+    assert window.save_list_button.width() < 300
+    assert window.save_list_button.y() == window.load_list_button.y()
+    assert [window.list_files.item(i).text() for i in range(window.list_files.count())] == ['fred', 'isa']
+    item = window.list_files.item(0)
+    QTest.mouseClick(window.list_files.viewport(), Qt.LeftButton,
+                     pos=window.list_files.visualItemRect(item).center())
+    assert store.export_list() == payload
+    assert calls == [True]
+    assert window.tabs.currentIndex() == 0
+    assert store.setting('lists_directory', '') == str(tmp_path)
+    window.open_lists()
+    (tmp_path / 'fred.json').unlink()
+    window.open_lists()
+    assert window.list_files.count() == 1
+    warnings = []
+    monkeypatch.setattr(QMessageBox, 'warning', lambda *args: warnings.append(args))
+    (tmp_path / 'isa.JSON').write_text('invalid')
+    window.load_list_item(window.list_files.item(0))
+    assert warnings and store.export_list() == payload
+    assert calls == [True]
+    store.clear_list()
+    window.close()
+
+
+def test_ht_and_periodic_comparison_settings(app, store, monkeypatch):
+    window = MainWindow(store, 'test')
+    window.show()
+    model = window.material_model
+    assert window.show_ht.isChecked()
+    assert not window.auto_compare.isChecked()
+    assert not window.comparison_timer.isActive()
+    window.show_ht.setChecked(False)
+    assert window.material_table.isColumnHidden(model.columnCount()-2)
+    store.save_supplier('Autre', 'https://example.org')
+    model.refresh()
+    assert window.material_table.isColumnHidden(model.columnCount()-2)
+    assert not window.material_table.isColumnHidden(model.columnCount()-3)
+    window.auto_compare.setChecked(True)
+    window.comparison_minutes.setValue(12)
+    assert window.comparison_timer.interval() == 720000
+    assert window.comparison_timer.isActive()
+    window.force_refresh.setChecked(True)
+    calls = []
+    monkeypatch.setattr(window, 'start_comparison', lambda **kwargs: calls.append(kwargs))
+    window.run_periodic_comparison()
+    assert not calls
+    store.add_item(store.products()[0]['id'], 2)
+    window.run_periodic_comparison()
+    assert calls == [{'force': True}]
+    window.worker = object()
+    window.run_periodic_comparison()
+    assert len(calls) == 1
+    window.worker = None
+    window.close_pending = True
+    window.run_periodic_comparison()
+    assert len(calls) == 1
+    window.close_pending = False
+    store.clear_list()
+    window.close()
+    assert not window.comparison_timer.isActive()
+    window = MainWindow(store, 'test')
+    assert not window.show_ht.isChecked()
+    assert window.auto_compare.isChecked()
+    assert window.comparison_minutes.value() == 12
+    assert window.force_refresh.isChecked()
+    window.auto_compare.setChecked(False)
+    assert not window.comparison_timer.isActive()
     window.close()
 
 

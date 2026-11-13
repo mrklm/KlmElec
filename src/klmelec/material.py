@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, QSize
 from PySide6.QtGui import QColor, QPen
-from PySide6.QtWidgets import QComboBox, QSpinBox, QStyledItemDelegate, QStyleOptionViewItem
+from PySide6.QtWidgets import QComboBox, QSpinBox, QStyledItemDelegate, QStyleOptionViewItem, QStyle
 
 from .comparison import best_offer, amounts, is_recent
 from .comparison_ui import euros, local_date
@@ -189,7 +189,7 @@ class MaterialModel(QAbstractItemModel):
 
 class MaterialDelegate(QStyledItemDelegate):
     def sizeHint(self, option, index):
-        return super().sizeHint(option, index) + QSize(24, 8)
+        return super().sizeHint(option, index) + QSize(16, 8)
 
     def createEditor(self, parent, option, index):
         if index.column() == 4:
@@ -229,7 +229,8 @@ class MaterialDelegate(QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         padded = QStyleOptionViewItem(option)
-        padded.rect = option.rect.adjusted(10, 0, -10, 0)
+        padded.state &= ~(QStyle.State_Selected | QStyle.State_HasFocus | QStyle.State_MouseOver)
+        padded.rect = option.rect.adjusted(6, 0, -6, 0)
         super().paint(painter, padded, index)
         if index.data(BEST_PRICE_ROLE):
             painter.save()

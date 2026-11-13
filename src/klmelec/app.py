@@ -7,7 +7,7 @@ from decimal import Decimal
 from importlib.resources import files
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel, QTimer, QSaveFile, QIODevice
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel, QTimer, QSaveFile, QIODevice, QSize
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -15,10 +15,12 @@ from PySide6.QtWidgets import (
     QMessageBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit,
     QCheckBox, QTabWidget, QAbstractItemView,
     QTextBrowser, QDoubleSpinBox, QTreeView, QListWidget, QFileDialog,
+    QGridLayout, QToolButton, QListView, QListWidgetItem, QFrame,
 )
 
 from .data import Store, matches
 from . import __version__
+from .shipping_ui import ShippingPanel
 from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
 from .suppliers import CONNECTORS
@@ -117,7 +119,20 @@ class MainWindow(QMainWindow):
         self.header_icon.setPixmap(pixmap.scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         self.header_icon.setAlignment(Qt.AlignCenter)
         self.header_icon.setAccessibleName('KLM Elec')
-        central_layout.addWidget(self.header_icon)
+        header_layout = QGridLayout()
+        header_layout.addWidget(self.header_icon, 0, 0)
+        disk = QPixmap()
+        disk.loadFromData(files('klmelec').joinpath('assets/icone-disquette.png').read_bytes())
+        self.disk_icon = QIcon(disk)
+        self.lists_shortcut = QToolButton()
+        self.lists_shortcut.setIcon(self.disk_icon)
+        self.lists_shortcut.setIconSize(QSize(40, 40))
+        self.lists_shortcut.setAutoRaise(True)
+        self.lists_shortcut.setToolTip('Enregistrer / charger une liste')
+        self.lists_shortcut.setAccessibleName('Enregistrer / charger une liste')
+        self.lists_shortcut.clicked.connect(self.open_lists)
+        header_layout.addWidget(self.lists_shortcut, 0, 0, Qt.AlignTop | Qt.AlignRight)
+        central_layout.addLayout(header_layout)
         tabs = QTabWidget()
         central_layout.addWidget(tabs)
         self.setCentralWidget(central)
@@ -160,17 +175,21 @@ class MainWindow(QMainWindow):
         self.material_table.setModel(self.material_model)
         self.material_table.setUniformRowHeights(True)
         self.material_table.setAlternatingRowColors(True)
-        self.material_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.material_table.setSelectionMode(QAbstractItemView.NoSelection)
         self.material_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.material_table.header().setSectionResizeMode(QHeaderView.Interactive)
         self.material_table.header().setSectionsMovable(True)
         self.material_table.header().setFirstSectionMovable(True)
-        self.material_table.header().setDefaultSectionSize(160)
-        self.material_table.header().setMinimumSectionSize(90)
-        for column, width in enumerate([290, 130, 140, 110, 180]):
-            self.material_table.setColumnWidth(column, width)
+        self.material_table.header().setDefaultSectionSize(100)
+        self.material_table.header().setMinimumSectionSize(45)
         self.material_table.header().setStretchLastSection(False)
         self.material_table.setItemDelegate(MaterialDelegate(self.material_table))
+        self.manual_column_widths = set()
+        self.sizing_columns = False
+        self.size_material_columns()
+        self.material_table.header().sectionResized.connect(self.remember_column_width)
+        self.material_model.modelReset.connect(self.size_material_columns)
+        self.material_model.dataChanged.connect(self.size_material_columns)
         self.material_table.clicked.connect(self.edit_place)
         self.material_table.clicked.connect(self.material_model.select_offer)
         self.expanded_products = set()
@@ -194,27 +213,37 @@ class MainWindow(QMainWindow):
         bottom.addWidget(self.cancel_button)
         bottom.addStretch()
         footer_controls.addLayout(bottom)
-        settings = QHBoxLayout()
-        settings.addWidget(QLabel('TVA pour le HT calculé (%)'))
         self.vat = QDoubleSpinBox()
         self.vat.setRange(0, 100)
         self.vat.setDecimals(2)
         self.vat.setValue(float(store.vat()))
         self.vat.valueChanged.connect(self.change_vat)
-        settings.addWidget(self.vat)
-        self.force_refresh = QCheckBox('Actualiser même si un relevé date de moins de 5 minutes')
-        settings.addWidget(self.force_refresh)
-        settings.addStretch()
-        footer_controls.addLayout(settings)
+        self.force_refresh = QCheckBox('Toujours actualiser les prix, même si le relevé date de moins de 5 minutes')
+        self.force_refresh.setChecked(store.setting('force_refresh', '0') == '1')
+        self.force_refresh.toggled.connect(lambda checked: store.save_setting('force_refresh', int(checked)))
         self.summary = QLabel()
         self.summary.setWordWrap(True)
         footer_controls.addWidget(self.summary)
+        self.summary_cards = QWidget()
+        self.summary_cards.setMinimumHeight(112)
+        self.summary_cards.setStyleSheet('QFrame[summaryCard="true"] { border: 2px solid palette(mid); border-radius: 6px; }')
+        cards_layout = QHBoxLayout(self.summary_cards)
+        cards_layout.setContentsMargins(0, 0, 0, 0)
+        cards_layout.setSpacing(10)
+        self.shipping_panel = ShippingPanel(store)
+        cards_layout.addWidget(self.shipping_panel, 3)
+        self.total_card = QFrame()
+        self.total_card.setProperty('summaryCard', True)
+        total_layout = QVBoxLayout(self.total_card)
+        total_layout.setContentsMargins(14, 12, 14, 12)
         self.total_label = QLabel('Total TTC\n0,00 €')
-        self.total_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.total_label.setMinimumWidth(240)
-        self.total_label.setStyleSheet('font-size: 26px; font-weight: 600; padding: 16px; border: 2px solid palette(mid); border-radius: 6px;')
+        self.total_label.setAlignment(Qt.AlignCenter)
+        self.total_label.setMinimumWidth(180)
+        self.total_label.setStyleSheet('font-size: 20px; font-weight: 600;')
+        total_layout.addWidget(self.total_label)
         self.total_label.setToolTip('Somme des offres retenues multipliées par les quantités. Hors livraison.')
-        footer.addWidget(self.total_label, 0, Qt.AlignBottom)
+        cards_layout.addWidget(self.total_card, 2)
+        footer.addWidget(self.summary_cards, 0, Qt.AlignBottom)
         tabs.addTab(material, 'Matériel')
 
         suppliers = QWidget()
@@ -223,6 +252,7 @@ class MainWindow(QMainWindow):
         supplier_note.setWordWrap(True)
         supplier_layout.addWidget(supplier_note)
         self.supplier_model = SupplierModel(store)
+        self.supplier_model.modelReset.connect(self.shipping_panel.reload_suppliers)
         self.supplier_table = table_for(self.supplier_model)
         supplier_layout.addWidget(self.supplier_table)
         supplier_buttons = QHBoxLayout()
@@ -288,18 +318,80 @@ class MainWindow(QMainWindow):
         self.settings_sections.addTab(suppliers, 'Fournisseurs')
         self.settings_sections.addTab(detail, 'Offres et historique')
         lists = QWidget()
+        self.lists_page = lists
+        self.lists_directory = Path(store.setting('lists_directory', str(Path.cwd()))).expanduser()
         lists_layout = QVBoxLayout(lists)
         lists_note = QLabel('Enregistrez vos références, quantités et lieux dans un fichier. Charger une liste remplace la liste actuelle après confirmation.')
         lists_note.setWordWrap(True)
         lists_layout.addWidget(lists_note)
-        self.save_list_button = QPushButton('Enregistrer une liste')
+        list_buttons = QHBoxLayout()
+        list_buttons.addStretch()
+        self.save_list_button = QPushButton('Enregistrer')
+        self.save_list_button.setMinimumSize(140, 40)
         self.save_list_button.clicked.connect(self.save_list)
-        lists_layout.addWidget(self.save_list_button)
-        self.load_list_button = QPushButton('Charger une liste')
+        list_buttons.addWidget(self.save_list_button)
+        self.load_list_button = QPushButton('Charger')
+        self.load_list_button.setMinimumSize(140, 40)
         self.load_list_button.clicked.connect(self.load_list)
-        lists_layout.addWidget(self.load_list_button)
-        lists_layout.addStretch()
+        list_buttons.addWidget(self.load_list_button)
+        list_buttons.addStretch()
+        lists_layout.addLayout(list_buttons)
+        directory_row = QHBoxLayout()
+        self.lists_directory_label = QLabel()
+        self.lists_directory_label.setWordWrap(True)
+        directory_row.addWidget(self.lists_directory_label, 1)
+        choose_directory = QPushButton('Choisir le dossier…')
+        choose_directory.clicked.connect(self.choose_lists_directory)
+        directory_row.addWidget(choose_directory)
+        lists_layout.addLayout(directory_row)
+        self.list_files = QListWidget()
+        self.list_files.setViewMode(QListView.IconMode)
+        self.list_files.setResizeMode(QListView.Adjust)
+        self.list_files.setMovement(QListView.Static)
+        self.list_files.setIconSize(QSize(72, 72))
+        self.list_files.setGridSize(QSize(160, 120))
+        self.list_files.setSpacing(12)
+        self.list_files.setWordWrap(True)
+        self.list_files.itemClicked.connect(self.load_list_item)
+        self.list_files.itemActivated.connect(self.load_list_item)
+        lists_layout.addWidget(self.list_files, 1)
+        self.refresh_list_files()
         self.settings_sections.addTab(lists, 'Listes')
+        self.settings_sections.currentChanged.connect(self.refresh_list_files)
+        display = QWidget()
+        display_layout = QFormLayout(display)
+        self.show_ht = QCheckBox('Afficher la colonne Total HT calculé')
+        self.show_ht.setChecked(store.setting('show_ht', '1') == '1')
+        display_layout.addRow(self.show_ht)
+        display_layout.addRow('TVA (%)', self.vat)
+        rule = QLabel('HT = TTC ÷ (1 + TVA / 100).\nLe total HT est calculé avec la quantité, puis arrondi au centime.\nLe prix fournisseur et le total TTC restent inchangés. Hors livraison.')
+        rule.setWordWrap(True)
+        display_layout.addRow(rule)
+        self.settings_sections.addTab(display, 'Affichage et TVA')
+        self.show_ht.toggled.connect(self.change_ht_visibility)
+        self.material_model.modelReset.connect(self.apply_ht_visibility)
+        self.apply_ht_visibility()
+        comparison_settings = QWidget()
+        comparison_layout = QFormLayout(comparison_settings)
+        self.auto_compare = QCheckBox('Comparer automatiquement à intervalles réguliers')
+        self.auto_compare.setChecked(store.setting('auto_compare', '0') == '1')
+        self.comparison_minutes = QSpinBox()
+        self.comparison_minutes.setRange(1, 1440)
+        self.comparison_minutes.setSuffix(' min')
+        self.comparison_minutes.setValue(int(store.setting('comparison_minutes', '5')))
+        comparison_layout.addRow(self.auto_compare)
+        comparison_layout.addRow('Fréquence', self.comparison_minutes)
+        comparison_layout.addRow(self.force_refresh)
+        note = QLabel('La comparaison périodique récupère de nouveaux prix et rétablit les choix automatiques.\nElle nécessite une liste non vide et un fournisseur actif. Aucun lancement simultané.\nSans actualisation forcée, un lancement ordinaire peut réutiliser un relevé de moins de 5 minutes.')
+        note.setWordWrap(True)
+        comparison_layout.addRow(note)
+        self.settings_sections.addTab(comparison_settings, 'Comparaison')
+        self.settings_sections.addTab(self.shipping_panel.settings_page, 'Livraison')
+        self.comparison_timer = QTimer(self)
+        self.comparison_timer.timeout.connect(self.run_periodic_comparison)
+        self.auto_compare.toggled.connect(self.configure_comparison_timer)
+        self.comparison_minutes.valueChanged.connect(self.configure_comparison_timer)
+        self.configure_comparison_timer()
         tabs.addTab(parameters, 'Paramètres')
         help_page = QWidget()
         help_layout = QVBoxLayout(help_page)
@@ -347,8 +439,11 @@ class MainWindow(QMainWindow):
                 en tirant leurs séparations. Les lots restent exclus du minimum unitaire.</li>
                 <li>Survolez une offre pour voir sa date et son statut.
                 Consultez les détails des relevés dans <b>Paramètres → Offres et historique</b>.</li>
-                <li>Le taux de TVA sert au calcul du HT. Cochez l’actualisation pour renouveler
-                les prix même si un relevé date de moins de cinq minutes.</li>
+                <li>Dans <b>Paramètres → Affichage et TVA</b>, affichez ou masquez la colonne HT
+                et réglez le taux : HT = TTC ÷ (1 + TVA / 100).</li>
+                <li>Dans <b>Paramètres → Comparaison</b>, activez une comparaison périodique et choisissez
+                sa fréquence. Chaque lancement périodique actualise les prix et rétablit les choix automatiques.
+                L’option d’actualisation forcée s’applique aux autres lancements.</li>
             </ul>
 
             <h3>4. Enregistrer, charger et quitter</h3>
@@ -385,7 +480,7 @@ class MainWindow(QMainWindow):
         self.tabs = tabs
         self.busy_widgets = [self.search, self.quantity, add, self.remove,
                              self.material_table, suppliers, self.vat, self.force_refresh,
-                             self.compare_button, self.add_place, locations, self.load_list_button]
+                             self.compare_button, self.add_place, locations, self.load_list_button, self.list_files]
         self.load_history()
         self.statusBar().showMessage(f'Données locales : {location}')
         self.material_model.modelReset.connect(self.update_summary)
@@ -396,8 +491,67 @@ class MainWindow(QMainWindow):
         self.freshness_timer.timeout.connect(self.refresh_freshness)
         self.freshness_timer.start()
 
+    def apply_ht_visibility(self):
+        ht_column = self.material_model.columnCount()-2
+        for column in range(self.material_model.columnCount()):
+            self.material_table.setColumnHidden(column, column == ht_column and not self.show_ht.isChecked())
+
+    def change_ht_visibility(self, checked):
+        self.store.save_setting('show_ht', int(checked))
+        self.apply_ht_visibility()
+
+    def configure_comparison_timer(self):
+        enabled = self.auto_compare.isChecked()
+        self.store.save_setting('auto_compare', int(enabled))
+        self.store.save_setting('comparison_minutes', self.comparison_minutes.value())
+        self.comparison_minutes.setEnabled(enabled)
+        self.comparison_timer.stop()
+        if enabled:
+            self.comparison_timer.start(self.comparison_minutes.value() * 60000)
+
+    def run_periodic_comparison(self):
+        if (self.auto_compare.isChecked() and self.isVisible() and not self.close_pending
+                and self.worker is None and QApplication.activeModalWidget() is None
+                and self.store.items() and any(s['active'] for s in self.store.suppliers())):
+            self.start_comparison(force=True)
+
+    def open_lists(self):
+        self.tabs.setCurrentIndex(1)
+        self.settings_sections.setCurrentWidget(self.lists_page)
+        self.refresh_list_files()
+
+    def choose_lists_directory(self):
+        directory = QFileDialog.getExistingDirectory(self, 'Dossier des listes', str(self.lists_directory))
+        if directory:
+            self.set_lists_directory(Path(directory))
+
+    def set_lists_directory(self, directory):
+        self.lists_directory = directory.resolve()
+        self.store.save_setting('lists_directory', self.lists_directory)
+        self.refresh_list_files()
+
+    def refresh_list_files(self):
+        self.list_files.clear()
+        self.lists_directory_label.setText(f'Dossier : {self.lists_directory}')
+        try:
+            paths = sorted((p for p in self.lists_directory.iterdir()
+                            if p.is_file() and p.suffix.lower() == '.json'), key=lambda p: p.name.casefold())
+        except OSError:
+            self.lists_directory_label.setText(f'Dossier inaccessible : {self.lists_directory}')
+            return
+        for path in paths:
+            item = QListWidgetItem(self.disk_icon, path.stem)
+            item.setData(Qt.UserRole, str(path))
+            item.setToolTip(str(path))
+            self.list_files.addItem(item)
+        if not paths:
+            self.lists_directory_label.setText(f'Dossier : {self.lists_directory} — aucun fichier JSON')
+
+    def load_list_item(self, item):
+        self.load_list(path=item.data(Qt.UserRole))
+
     def save_list(self):
-        path, _ = QFileDialog.getSaveFileName(self, 'Enregistrer une liste', 'liste-klmelec.json', 'Liste KLM Elec (*.json)')
+        path, _ = QFileDialog.getSaveFileName(self, 'Enregistrer une liste', str(self.lists_directory / 'liste-klmelec.json'), 'Liste KLM Elec (*.json)')
         if not path:
             return
         if not Path(path).suffix:
@@ -415,12 +569,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, 'Enregistrement impossible', output.errorString())
             return
         self.statusBar().showMessage(f'Liste enregistrée : {path}')
+        self.set_lists_directory(Path(path).parent)
         return True
 
-    def load_list(self):
+    def load_list(self, *, path=None):
         if self.worker is not None:
             return
-        path, _ = QFileDialog.getOpenFileName(self, 'Charger une liste', '', 'Liste KLM Elec (*.json)')
+        if path is None:
+            path, _ = QFileDialog.getOpenFileName(self, 'Charger une liste', str(self.lists_directory), 'Liste KLM Elec (*.json)')
         if not path:
             return
         try:
@@ -434,10 +590,13 @@ class MainWindow(QMainWindow):
         except (OSError, ValueError, sqlite3.Error) as exc:
             QMessageBox.warning(self, 'Chargement impossible', str(exc))
             return
+        self.set_lists_directory(Path(path).parent)
         self.reload_places()
         self.invalidate_comparison()
         self.tabs.setCurrentIndex(0)
         self.statusBar().showMessage(f'Liste chargée : {path}')
+        if self.material_model.rows and self.material_model.suppliers:
+            self.start_comparison()
 
     def change_theme(self, name):
         self.setStyleSheet('')
@@ -488,7 +647,7 @@ class MainWindow(QMainWindow):
         else:
             self.report.setPlainText('Aucun relevé enregistré. Ajoutez du matériel puis lancez une comparaison.')
 
-    def start_comparison(self):
+    def start_comparison(self, *, force=False):
         if self.worker and self.worker.isRunning():
             return
         items = [dict(row) for row in self.store.items()]
@@ -497,7 +656,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, 'Comparaison', 'Veuillez ajouter du matériel et activer au moins un fournisseur.')
             return
         previous = []
-        if not self.force_refresh.isChecked():
+        if not force and not self.force_refresh.isChecked():
             # Newest observations first: cache_lookup scans in reverse.
             for _, payload in reversed(self.store.comparisons()):
                 previous.extend(payload['offers'])
@@ -583,6 +742,7 @@ class MainWindow(QMainWindow):
             else:
                 event.ignore()
                 return
+        self.comparison_timer.stop()
         event.accept()
 
     def edit_place(self, index):
@@ -622,6 +782,30 @@ class MainWindow(QMainWindow):
 
     def filter_products(self, query):
         self.suggestions.setStringList([label for label in self.labels if matches(query, label)])
+
+    def remember_column_width(self, column, old_size, new_size):
+        if not self.sizing_columns and column < len(self.material_model.headers):
+            self.manual_column_widths.add(self.material_model.headers[column])
+
+    def size_material_columns(self):
+        metrics = self.material_table.fontMetrics()
+        self.sizing_columns = True
+        try:
+            for column, heading in enumerate(self.material_model.headers):
+                if heading in self.manual_column_widths:
+                    continue
+                header_width = max(metrics.horizontalAdvance(line) for line in heading.split('\n')) + 20
+                texts = [str(self.material_model.index(row, column).data() or '')
+                         for row in range(len(self.material_model.rows))]
+                content_width = max((metrics.horizontalAdvance(text) for text in texts), default=0) + 20
+                if column == 0:
+                    content_width += self.material_table.indentation()
+                # Long designations/status messages must not consume the whole table.
+                cap = 280 if column == 0 else 170 if column == 4 else 140
+                width = max(header_width, min(content_width, cap))
+                self.material_table.setColumnWidth(column, width)
+        finally:
+            self.sizing_columns = False
 
     def update_summary(self):
         rows = self.material_model.rows

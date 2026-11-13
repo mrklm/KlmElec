@@ -1,5 +1,22 @@
 # Historique
 
+## 0.6.0 — 2026-11-13
+
+- Harmonise les blocs Livraison et Total TTC : hauteur commune, cadres identiques, marges régulières et typographie plus compacte.
+- Ajoute YESSS Électrique aux fournisseurs potentiels, désactivé par défaut et sans connecteur de prix ; enrichit les bases existantes sans doublon.
+- Ajoute un bloc Livraison avec icône colis et choix du fournisseur près du total TTC.
+- Ajoute Paramètres → Livraison pour mémoriser les seuils de gratuité par fournisseur, en HT ou TTC, et leurs conditions. Les montants restent indicatifs et exclus du total matériel.
+- Ajoute un raccourci disquette en haut à droite vers Paramètres → Listes, avec deux boutons compacts et une grille de fichiers JSON chargeables au clic.
+- Mémorise le dossier des listes, permet de le choisir et actualise la grille à l’ouverture de la section ainsi qu’après un enregistrement ou un chargement.
+- Ajoute Affichage et TVA dans Paramètres : visibilité mémorisée de la colonne HT, taux de TVA et formule de calcul explicitée.
+- Ajoute Comparaison dans Paramètres : fréquence automatique de 1 à 1 440 minutes, désactivée par défaut, et option d’actualisation forcée mémorisées. Les lancements périodiques renouvellent les prix et rétablissent les choix automatiques.
+- Lance automatiquement la comparaison après le chargement réussi d’une liste non vide, si un fournisseur est actif.
+- Supprime la surbrillance des lignes au clic, tout en conservant le choix des offres et la suppression de la ligne courante.
+- Dimensionne les colonnes selon leur contenu avec des plafonds pour les textes longs ; réduit les marges et conserve les largeurs ajustées manuellement.
+
+- Documente les limites de YESSS (aucun prix public sur la fiche testée) et de Leroy Merlin (refus HTTP 403 et vendeurs partenaires) ; aucun connecteur supplémentaire activé.
+- Valide les changements avec 71 tests automatisés.
+
 ## 0.5.0 — 2026-11-13
 
 - Aère les cellules du tableau Matériel et rend les colonnes déplaçables et redimensionnables.

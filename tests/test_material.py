@@ -200,6 +200,34 @@ def test_manual_choice_rejects_invalid_offers_and_counts_ties_once(store, app):
     window.close()
 
 
+def test_compact_columns_and_click_without_row_highlight(store, app):
+    from PySide6.QtTest import QTest
+
+    product = next(p for p in store.products() if p['reference'] == '406774')
+    store.add_item(product['id'], 2)
+    window = MainWindow(store, 'test')
+    window.resize(1200, 700)
+    model = window.material_model
+    model.offers = offers(model, ('7.50', '6.85'))
+    model.refresh_prices()
+    window.show()
+    app.processEvents()
+    table = window.material_table
+    assert table.header().length() <= table.viewport().width()
+    index = model.index(0, 5)
+    QTest.mouseClick(table.viewport(), Qt.LeftButton, pos=table.visualRect(index).center())
+    assert table.currentIndex().row() == 0
+    assert not table.selectionModel().selectedIndexes()
+    assert model.index(0, 5).data(BEST_PRICE_ROLE)
+    assert window.total_label.text() == 'Total TTC\n15,00 €'
+    table.setColumnWidth(0, 230)
+    model.refresh_prices()
+    assert table.columnWidth(0) == 230
+    window.remove.click()
+    assert not store.items()
+    window.close()
+
+
 def test_old_database_gets_unassigned_units_without_changing_history(tmp_path):
     import sqlite3
     path = tmp_path/'old.sqlite3'

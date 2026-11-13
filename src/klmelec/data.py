@@ -65,6 +65,13 @@ class Store:
                     ('Elec Distrib', 'https://www.elecdistrib.fr/', 'elecdistrib'),
                 ])
                 self.db.execute("INSERT INTO settings VALUES ('seeded','1')")
+            if not self.db.execute("SELECT 1 FROM settings WHERE key='supplier_yesss_v1'").fetchone():
+                existing = self.db.execute('SELECT url FROM suppliers').fetchall()
+                if not any((urlsplit(row['url']).hostname or '').lower() in ('yesss-fr.com', 'www.yesss-fr.com')
+                           for row in existing):
+                    self.db.execute('INSERT INTO suppliers(name,url,active) VALUES (?,?,0)',
+                                    ('YESSS Électrique', 'https://www.yesss-fr.com/'))
+                self.db.execute("INSERT INTO settings VALUES ('supplier_yesss_v1','1')")
             # Add bundled references once per catalog revision. Existing names, IDs,
             # quantities, suppliers and historical snapshots are never overwritten.
             if not self.db.execute("SELECT 1 FROM settings WHERE key='catalog_2026_11_braise_samia'").fetchone():
@@ -246,6 +253,15 @@ class Store:
     def theme(self):
         row = self.db.execute("SELECT value FROM settings WHERE key='theme'").fetchone()
         return row['value'] if row else None
+
+    def setting(self, key, default):
+        row = self.db.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+        return row['value'] if row else default
+
+    def save_setting(self, key, value):
+        with self.db:
+            self.db.execute('INSERT INTO settings VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+                            (key, str(value)))
 
     def theme_option(self, key):
         row = self.db.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
