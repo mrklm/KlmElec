@@ -4,6 +4,7 @@ import sqlite3
 import unicodedata
 from importlib.resources import files
 from urllib.parse import urlsplit
+from .electrical import empty_plan, prune_plan, validate_plan
 
 
 def normalize(text):
@@ -122,6 +123,7 @@ class Store:
                                     ((product_id, pos, location_id) for pos in positions))
 
     def remove_unit(self, product_id, ordinal):
+        product = self.db.execute('SELECT * FROM products WHERE id=?', (product_id,)).fetchone()
         row = self.db.execute('SELECT quantity FROM items WHERE product_id=?', (product_id,)).fetchone()
         if not row or not 0 <= ordinal < row['quantity']:
             raise ValueError('Cet exemplaire n’existe plus.')
@@ -134,6 +136,33 @@ class Store:
                 self.db.executemany('INSERT INTO item_locations VALUES (?,?,?)',
                                     ((product_id, r['ordinal']-1, r['location_id']) for r in following))
                 self.db.execute('UPDATE items SET quantity=quantity-1 WHERE product_id=?', (product_id,))
+            self._prune_electrical_plan(product, ordinal)
+
+    def electrical_plan(self):
+        return prune_plan(json.loads(self.setting('electrical_plan', json.dumps(empty_plan()))), self.items())
+
+    def save_electrical_plan(self, plan):
+        validate_plan(plan, self.items())
+        self.save_setting('electrical_plan', json.dumps(plan, ensure_ascii=False))
+
+    def _prune_electrical_plan(self, removed_product=None, ordinal=None):
+        raw = self.setting('electrical_plan', None)
+        if raw is None:
+            return
+        plan = json.loads(raw)
+        if removed_product is not None:
+            shifted = {}
+            for key, value in plan['circuits'].items():
+                brand, reference, position = json.loads(key)
+                if (brand, reference) == (removed_product['brand'], removed_product['reference']):
+                    if position == ordinal:
+                        continue
+                    if position > ordinal:
+                        position -= 1
+                shifted[json.dumps([brand, reference, position], ensure_ascii=False)] = value
+            plan['circuits'] = shifted
+        plan = prune_plan(plan, self.items())
+        self.db.execute("UPDATE settings SET value=? WHERE key='electrical_plan'", (json.dumps(plan, ensure_ascii=False),))
 
     def products(self):
         return self.db.execute('SELECT * FROM products ORDER BY name,reference').fetchall()
@@ -157,14 +186,19 @@ class Store:
     def export_list(self):
         assignments = self.assignments()
         locations = {row['id']: row['name'] for row in self.locations()}
-        return {'format': 'klmelec-list', 'version': 1, 'items': [
+        payload = {'format': 'klmelec-list', 'version': 1, 'items': [
             {'brand': row['brand'], 'reference': row['reference'], 'quantity': row['quantity'],
              'locations': [locations.get(assignments.get((row['id'], pos))) for pos in range(row['quantity'])]}
             for row in self.items()]}
+        plan = self.electrical_plan()
+        if plan != empty_plan():
+            payload['electrical'] = plan
+        return payload
 
     def clear_list(self):
         with self.db:
             self.db.execute('DELETE FROM items')
+            self.db.execute("DELETE FROM settings WHERE key='electrical_plan'")
 
     def validate_list(self, payload):
         if (not isinstance(payload, dict) or payload.get('format') != 'klmelec-list'
@@ -196,12 +230,16 @@ class Store:
                 cleaned.append(place)
             seen.add(product_id)
             validated.append((product_id, quantity, cleaned))
+        validate_plan(payload.get('electrical', empty_plan()), payload['items'])
         return validated
 
     def import_list(self, payload):
         validated = self.validate_list(payload)
         with self.db:
             self.db.execute('DELETE FROM items')
+            self.db.execute("DELETE FROM settings WHERE key='electrical_plan'")
+            if 'electrical' in payload:
+                self.db.execute('INSERT INTO settings VALUES (?,?)', ('electrical_plan', json.dumps(payload['electrical'], ensure_ascii=False)))
             for product_id, quantity, places in validated:
                 self.db.execute('INSERT INTO items VALUES (?,?)', (product_id, quantity))
                 for ordinal, place in enumerate(places):
@@ -217,10 +255,12 @@ class Store:
         with self.db:
             self.db.execute('UPDATE items SET quantity=? WHERE product_id=?', (quantity, product_id))
             self.db.execute('DELETE FROM item_locations WHERE product_id=? AND ordinal>=?', (product_id, quantity))
+            self._prune_electrical_plan()
 
     def remove_item(self, product_id):
         with self.db:
             self.db.execute('DELETE FROM items WHERE product_id=?', (product_id,))
+            self._prune_electrical_plan()
 
     def suppliers(self):
         return self.db.execute('SELECT * FROM suppliers WHERE archived=0 ORDER BY name').fetchall()

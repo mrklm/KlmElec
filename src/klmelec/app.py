@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from .data import Store, matches
 from . import __version__
 from .shipping_ui import ShippingPanel
+from .electrical_ui import ElectricalPage
 from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
 from .suppliers import CONNECTORS
@@ -393,6 +394,9 @@ class MainWindow(QMainWindow):
         self.comparison_minutes.valueChanged.connect(self.configure_comparison_timer)
         self.configure_comparison_timer()
         tabs.addTab(parameters, 'Paramètres')
+        self.electrical_page = ElectricalPage(store)
+        tabs.addTab(self.electrical_page, 'Calcul électrique')
+        self.material_model.modelReset.connect(self.electrical_page.refresh)
         help_page = QWidget()
         help_layout = QVBoxLayout(help_page)
         help_heading = QLabel('Aide')
@@ -402,6 +406,11 @@ class MainWindow(QMainWindow):
         help_content.setHtml(f'''
             <p><b>À retenir :</b> l’application démarre avec une liste vide.
             Enregistrez votre liste dans un fichier pour la retrouver plus tard.</p>
+
+            <p><b>Calcul électrique :</b> pour un logement monophasé, créez vos rangées,
+            affectez chaque disjoncteur reconnu et précisez son usage ainsi que les caractéristiques
+            du différentiel prévu. Choisissez la règle amont ou aval pour consulter les critères détaillés.
+            Les rangées sont enregistrées avec la liste. Ce contrôle ne valide pas la conformité globale du tableau.</p>
 
             <h3>1. Préparer votre liste de matériel</h3>
             <ul>

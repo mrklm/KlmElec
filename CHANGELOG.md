@@ -1,5 +1,14 @@
 # Historique
 
+## 1.0.0 — 2026-11-13
+
+- Ajoute l’onglet Calcul électrique pour préparer les rangées d’un logement monophasé à partir des cinq références de disjoncteurs Legrand reconnues.
+- Permet d’affecter chaque exemplaire à une rangée, de préciser son usage et les caractéristiques du différentiel prévu.
+- Détaille les critères amont/aval, le calibre à étudier, la limite de huit circuits, la sensibilité et les restrictions de type. Signale les données manquantes et les équipements particuliers sans attester la conformité globale.
+- Conserve les rangées et affectations dans les listes JSON ; accepte les anciennes listes et ajuste les affectations lors des suppressions d’exemplaires.
+- Passe la version centralisée à 1.0.0 pour le titre de fenêtre et le paquet Python ; actualise le README et documente le périmètre des calculs.
+- Valide les changements avec 87 tests automatisés, incluant les calculs, la sauvegarde des rangées et leur interface.
+
 ## 0.6.0 — 2026-11-13
 
 - Harmonise les blocs Livraison et Total TTC : hauteur commune, cadres identiques, marges régulières et typographie plus compacte.

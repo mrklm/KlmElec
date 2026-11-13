@@ -134,7 +134,7 @@ def test_settings_sections_and_theme_persistence(app, tmp_path):
     db = Store(path)
     window = MainWindow(db, 'test')
     window.show()
-    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', '?']
+    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique', '?']
     assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
         'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison']
     assert window.theme_selector.currentText() == DEFAULT_THEME
