@@ -5,6 +5,10 @@ from .base import Connector, ProductLink, OfferError, money
 class ElecDistrib(Connector):
     host = 'www.elecdistrib.fr'
     links = {
+        '405001': ProductLink('https://www.elecdistrib.fr/accessoires-modulaires-legrand/64-peigne-d-alimentation-verticale-vx3-optimisee-monophasee-pour-tableau-drivia-3-rangees-entraxe-125mm-legrand-ref-405001-3245064050012.html', 'LEG-405001', '3245064050012'),
+        '404926': ProductLink('https://www.elecdistrib.fr/tableaux-composants/61-peigne-d-alimentation-universel-13-modules-phase-neutre-hx3-horizontal-1p-legrand-ref-404926-3245064049269.html', 'LEG-404926', '3245064049269'),
+        '405000': ProductLink('https://www.elecdistrib.fr/accessoires-modulaires-legrand/63-peigne-d-alimentation-verticale-vx-optimisee-monophasee-pour-tableau-drivia-2-rangees-entraxe-125mm-legrand-ref-405000-3245064050005.html', 'LEG-405000', '3245064050005'),
+        '412408': ProductLink('https://www.elecdistrib.fr/telerupteurs-legrand/111-telerupteur-cx-standard-avec-bornes-a-vis-16a-250v-1-module-legrand-ref-412408-3245064124089.html', 'LEG-412408', '3245064124089'),
         '406771': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/76-disjoncteur-phase-neutre-dnx3-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-2a-courbe-c-legrand-ref-406771-3245064067713.html', 'LEG-406771', '3245064067713', 1),
         '406773': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/75-disjoncteur-phase-neutre-dnx3-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-10a-courbe-c-legrand-ref-406773-3245064067737.html', 'LEG-406773', '3245064067737', 1),
         '406775': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/73-disjoncteur-phase-neutre-dnx3-4500-6-ka-arrivee-et-sortie-borne-a-vis-1pn-230v-20a-courbe-c-legrand-ref-406775-3245064067751.html', 'LEG-406775', '3245064067751', 1),

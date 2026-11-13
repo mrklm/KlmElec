@@ -1,4 +1,4 @@
-# KlmElec — v1.0.0
+# KlmElec — v1.0.1
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
@@ -18,7 +18,7 @@ La version est centralisée dans `VERSION`, utilisée par le paquet Python et le
 
 ## Fonctions
 
-- **Matériel** : catalogue de 27 articles, recherche par désignation ou référence, quantités et lieux par exemplaire.
+- **Matériel** : catalogue de 28 articles, recherche par désignation ou référence, quantités et lieux par exemplaire.
 - **Prix** : comparaison TTC, choix manuel du fournisseur par article et total selon les quantités, hors livraison. Les comparaisons peuvent être périodiques.
 - **Calcul électrique** : rangées d’un logement monophasé, affectation des circuits, usages et caractéristiques des différentiels. Vérifications amont/aval, calibre, nombre de circuits, type et sensibilité ; données manquantes signalées.
 - **Paramètres** : fournisseurs, historique, seuils de livraison offerte saisis manuellement, TVA, colonne HT optionnelle et 16 thèmes.
@@ -34,7 +34,13 @@ Catalogue, fournisseurs, lieux, préférences et historique sont conservés dans
 
 ## Périmètre et limites
 
-**123 Elec et Elec Distrib** disposent de connecteurs pour huit références Legrand : **406771, 406773, 406774, 406775, 406777, 411617, 411633, 411638**. Le minimum automatique exige des offres unitaires disponibles et comparables chez tous les fournisseurs actifs. Les relevés récents peuvent être réutilisés pendant cinq minutes ; une nouvelle comparaison rétablit les choix automatiques.
+**123 Elec et Elec Distrib** disposent de connecteurs pour douze références Legrand : **404926, 405000, 405001, 406771, 406773, 406774, 406775, 406777, 411617, 411633, 411638, 412408**. **123 Elec** prend aussi en charge les quatre références Wago **WAG2106-5201, WAG2106-5204, WAG2106-5207, WAG2106-1291**.
+
+Le catalogue et la couverture des prix sont distincts : un article sans fiche configurée reste utilisable dans une liste. Le minimum automatique exige des offres comparables chez tous les fournisseurs actifs ; une offre disponible seule peut être sélectionnée manuellement.
+
+Les relevés peuvent être réutilisés pendant cinq minutes. Une nouvelle comparaison rétablit les choix automatiques. Les remises par quantité ne sont pas calculées.
+
+La référence **405000** désigne un peigne **2 rangées**, malgré le libellé historique « Peigne 3r » de certaines listes. Le modèle **3 rangées, entraxe 125 mm**, est disponible au catalogue sous la référence **405001** ; il faut le sélectionner pour l’ajouter à une liste. Les références IKE et le câble générique RV2-3G6mm2 restent à identifier précisément avant comparaison. Voir le [diagnostic du relevé](docs/releve-2026-11-13.md).
 
 Les prix dépendent des sites fournisseurs. Les frais de livraison ne sont pas ajoutés au total. **YESSS Électrique** est proposé désactivé, sans connecteur ; **Leroy Merlin** n’est pas intégré. Ajouter un fournisseur ne crée pas de connecteur.
 

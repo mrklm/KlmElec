@@ -14,6 +14,8 @@ class ProductLink:
     sku: str
     ean: str
     pack: int = 1
+    brand: str = 'Legrand'
+    manufacturer_reference: str = ''
 
 
 class OfferError(ValueError):
@@ -47,6 +49,7 @@ class Connector:
     def parse(self, html, reference, link):
         soup = BeautifulSoup(html, 'html.parser')
         title = soup.find('h1')
+        reference = link.manufacturer_reference or reference
         if not title or not re.search(rf'(?<!\d){re.escape(reference)}(?!\d)', title.get_text()):
             raise OfferError('Référence de la fiche non confirmée')
         if link.pack != 1 or re.search(r'\b(lot|pack)\b', title.get_text(), re.I):
@@ -69,7 +72,7 @@ class Connector:
         product = candidates[0]
         brand = product.get('brand', {})
         brand = brand.get('name', '') if isinstance(brand, dict) else brand
-        if str(brand).casefold() != 'legrand' or str(product.get('gtin13')) != link.ean:
+        if str(brand).casefold() != link.brand.casefold() or str(product.get('gtin13')) != link.ean:
             raise OfferError('Marque ou EAN non confirmé')
         offer = product.get('offers')
         if isinstance(offer, list) and len(offer) == 1:

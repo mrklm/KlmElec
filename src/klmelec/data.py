@@ -80,6 +80,12 @@ class Store:
                     self.db.execute('INSERT OR IGNORE INTO products(name,brand,reference) VALUES (:name,:brand,:reference)', product)
                 self.db.execute("INSERT INTO settings VALUES ('catalog_2026_11_braise_samia','1')")
 
+            if not self.db.execute("SELECT 1 FROM settings WHERE key='catalog_405001_v1'").fetchone():
+                product = next(p for p in json.loads(files('klmelec').joinpath('catalog.json').read_text())
+                               if p['brand'] == 'Legrand' and p['reference'] == '405001')
+                self.db.execute('INSERT OR IGNORE INTO products(name,brand,reference) VALUES (:name,:brand,:reference)', product)
+                self.db.execute("INSERT INTO settings VALUES ('catalog_405001_v1','1')")
+
             if not self.db.execute("SELECT 1 FROM settings WHERE key='locations_v1'").fetchone():
                 self.db.executemany('INSERT OR IGNORE INTO locations(name,normalized) VALUES (?,?)',
                                     [(name, normalize(name)) for name in DEFAULT_LOCATIONS])

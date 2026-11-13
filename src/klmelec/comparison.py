@@ -7,6 +7,7 @@ from urllib.robotparser import RobotFileParser
 
 import httpx
 
+from . import __version__
 from .suppliers import CONNECTORS
 from .suppliers.base import OfferError
 
@@ -71,7 +72,7 @@ def compare(items, suppliers, previous=(), progress=lambda text: None,
     """Return one explicit result per item and enabled supplier, including failures."""
     if client is None:
         with httpx.Client(timeout=15, follow_redirects=False,
-                          headers={'User-Agent': 'KlmElec/0.2 (comparaison personnelle)'}) as owned:
+                          headers={'User-Agent': f'KlmElec/{__version__} (comparaison personnelle)'}) as owned:
             return compare(items, suppliers, previous, progress, cancelled, owned, pause)
     results, robots, blocked = [], {}, set()
     for item in items:
@@ -79,7 +80,9 @@ def compare(items, suppliers, previous=(), progress=lambda text: None,
             if not supplier['active']:
                 continue
             connector = CONNECTORS.get(supplier['connector'])
-            link = connector.links.get(item['reference']) if connector and item['brand'].casefold() == 'legrand' else None
+            link = connector.links.get(item['reference']) if connector else None
+            if link and item['brand'].casefold() != link.brand.casefold():
+                link = None
             result = dict(product_id=item['id'], reference=item['reference'], quantity=item['quantity'],
                           supplier_id=supplier['id'], supplier=supplier['name'], connector=supplier['connector'],
                           url=link.url if link else '', checked_at=now(), status='error', detail='', ttc=None, cached=False)
@@ -90,7 +93,7 @@ def compare(items, suppliers, previous=(), progress=lambda text: None,
                 if not connector or urlsplit(supplier['url']).hostname != connector.host:
                     raise OfferError('Connecteur non disponible pour ce site')
                 if not link:
-                    raise OfferError('URL non configurée pour cette référence')
+                    raise OfferError('Référence non prise en charge chez ce fournisseur — aucune fiche configurée')
                 if link.pack != 1:
                     raise OfferError(f'Lot de {link.pack} : exclu de la comparaison unitaire')
                 cached = cache_lookup(previous, supplier, item, link.url)

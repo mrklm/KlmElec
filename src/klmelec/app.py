@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
 
         suppliers = QWidget()
         supplier_layout = QVBoxLayout(suppliers)
-        supplier_note = QLabel('123 Elec et Elec Distrib : références Legrand 406771, 406773, 406774, 406775, 406777, 411617, 411633 et 411638 configurées.\nUn fournisseur ajouté nécessite un connecteur compatible. Les lots sont exclus du minimum unitaire.')
+        supplier_note = QLabel('123 Elec et Elec Distrib : 12 références Legrand configurées (disjoncteurs, différentiels, peignes 404926 / 405000 / 405001 et télérupteur 412408).\n123 Elec : également les quatre références Wago 2106 du catalogue. Les autres articles restent non pris en charge.\nUn fournisseur ajouté nécessite un connecteur compatible. Les lots sont exclus du minimum unitaire.')
         supplier_note.setWordWrap(True)
         supplier_layout.addWidget(supplier_note)
         self.supplier_model = SupplierModel(store)

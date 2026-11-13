@@ -1,5 +1,15 @@
 # Historique
 
+## 1.0.1 — 2026-11-13
+
+- Ajoute le peigne vertical Legrand 405001 (3 rangées, entraxe 125 mm) au catalogue et aux deux connecteurs. Enrichit les bases existantes sans remplacer les articles ni les quantités des listes.
+- Étend la récupération aux peignes Legrand 404926 / 405000 et au télérupteur 412408 chez les deux fournisseurs, ainsi qu’aux quatre références Wago 2106 chez 123 Elec, avec correspondance explicite des références fabricant et fournisseur.
+- Corrige les faux rejets d’éco-participation dus aux produits recommandés et aux prix dégressifs de 123 Elec ; conserve les contrôles des taxes du produit et utilise le prix unitaire standard.
+- Remplace « URL non configurée » par un message indiquant clairement qu’une référence n’est pas prise en charge chez le fournisseur.
+- Documente les références restant non couvertes et le libellé historique « Peigne 3r » associé à la référence 405000 (2 rangées).
+- Aligne la version annoncée aux fournisseurs sur la version centralisée de l’application.
+- Valide les changements avec 97 tests automatisés ; les nouvelles fiches fournisseurs ont également été vérifiées en ligne.
+
 ## 1.0.0 — 2026-11-13
 
 - Ajoute l’onglet Calcul électrique pour préparer les rangées d’un logement monophasé à partir des cinq références de disjoncteurs Legrand reconnues.

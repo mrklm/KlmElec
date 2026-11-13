@@ -14,12 +14,12 @@ from klmelec.suppliers.base import OfferError
 
 def document(key='123elec', ref='411617', price='36.50', **changes):
     link = CONNECTORS[key].links[ref]
-    product = {'@type': 'Product', 'sku': link.sku, 'brand': {'name': 'Legrand'},
+    product = {'@type': 'Product', 'sku': link.sku, 'brand': {'name': link.brand},
                'gtin13': link.ean, 'offers': {'@type': 'Offer', 'price': price,
                'priceCurrency': 'EUR', 'availability': 'https://schema.org/InStock'}}
     product.update(changes)
     data = {'reference': link.sku, 'ecotax': 0, 'minimal_quantity': '1'}
-    return (f'<h1>Legrand {ref}</h1><script type="application/ld+json">{json.dumps(product)}</script>'
+    return (f'<h1>{link.brand} {link.manufacturer_reference or ref}</h1><script type="application/ld+json">{json.dumps(product)}</script>'
             f'<meta property="product:price:amount" content="{price}">'
             f'<span class="pricettcproduct" content="EUR"></span>'
             f'<span class="pricettcproduct" content="{price}">{price} € TTC la pièce</span>'
@@ -119,7 +119,7 @@ def test_lot_and_unknown_reference_never_requested(monkeypatch):
     offers = run(handler, items=items, suppliers=[suppliers[1]])
     assert 'Lot de 10' in offers[0]['detail']
     items[0]['reference'] = '999999'
-    assert 'URL non configurée' in run(handler, items=items)[0]['detail']
+    assert 'Référence non prise en charge' in run(handler, items=items)[0]['detail']
 
 
 def test_robots_and_stop_after_block():
@@ -210,7 +210,7 @@ def test_existing_database_upgrade_preserves_data(tmp_path):
     old.close()
     store = Store(path)
     assert store.items()[0]['quantity'] == 9
-    assert len(store.products()) == 28  # Personal product plus the enriched bundled catalog.
+    assert len(store.products()) == 29  # Personal product plus the enriched bundled catalog.
     assert next(p for p in store.products() if p['id'] == 42)['name'] == 'Produit personnel'
     assert store.suppliers()[0]['name'] == 'Personnel'
     assert not store.suppliers()[0]['active']
@@ -294,3 +294,64 @@ def test_406774_unit_offer_and_lot_rejection():
         connector.parse(lot, '406774', link)
     with pytest.raises(OfferError):
         connector.parse(document('elecdistrib',ref='406774',sku='LEG-406774x10'), '406774', link)
+
+
+@pytest.mark.parametrize('ref', ['404926', '405000', '405001', '412408'])
+def test_accessories_reach_both_exact_product_pages(ref):
+    items, suppliers = inputs(ref)
+    called = []
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='User-agent: *\nAllow: /')
+        key = '123elec' if request.url.host == 'www.123elec.com' else 'elecdistrib'
+        assert str(request.url) == CONNECTORS[key].links[ref].url
+        called.append(key)
+        return httpx.Response(200, text=document(key, ref=ref))
+    offers = run(handler, items=items, suppliers=suppliers)
+    assert len(called) == 2
+    assert all(o['status'] == 'ok' for o in offers)
+    assert best_offer(offers) is not None
+
+
+@pytest.mark.parametrize('ref', ['WAG2106-5201', 'WAG2106-5204', 'WAG2106-5207', 'WAG2106-1291'])
+def test_wago_supplier_alias_and_partial_comparison(ref):
+    items, suppliers = inputs(ref)
+    items[0]['brand'] = 'Wago'
+    def handler(request):
+        assert request.url.host == 'www.123elec.com'
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='User-agent: *\nAllow: /')
+        return httpx.Response(200, text=document(ref=ref))
+    offers = run(handler, items=items, suppliers=suppliers)
+    assert offers[0]['status'] == 'ok'
+    assert 'non prise en charge' in offers[1]['detail']
+    assert best_offer(offers) is None
+    connector = CONNECTORS['123elec']
+    link = connector.links[ref]
+    for html in [document(ref=ref, brand={'name': 'Legrand'}),
+                 document(ref=ref, gtin13='0000000000000'),
+                 document(ref=ref, sku=link.sku + '-lot'),
+                 document(ref=ref).replace('<h1>Wago', '<h1>Lot de 10 Wago'),
+                 document(ref=ref).replace(link.manufacturer_reference, '9999-9999')]:
+        with pytest.raises(OfferError):
+            connector.parse(html, ref, link)
+    items[0]['brand'] = 'Autre'
+    offers = run(lambda request: pytest.fail('Aucune requête pour une marque incohérente'), items=items)
+    assert all(o['status'] == 'error' for o in offers)
+
+
+def test_recommended_products_tax_markup_is_not_main_product_tax():
+    connector = CONNECTORS['123elec']
+    link = connector.links['404926']
+    recommended = ('<form class="product-item product_addtocart_form">'
+                   '<span class="price-container price-final_price tax weee">'
+                   '<span data-price-amount="7.5" data-price-type="finalPrice">7,50 € TTC</span>'
+                   '</span></form>')
+    html = document(ref='404926', price='3.20') + recommended
+    html += ('<span class="price-container price-tier_price tax weee">'
+             '<span class="price-wrapper" data-price-amount="3.00">3,00 € TTC</span></span>')
+    assert connector.parse(html, '404926', link)[0] == Decimal('3.20')
+    for surcharge in ('<div class="weee-tax">0,20 €</div>', '<div class="weee">0,20 €</div>',
+                      '<span data-price-type="weee" data-price-amount="0.2"></span>'):
+        with pytest.raises(OfferError, match='Éco-participation'):
+            connector.parse(html + surcharge, '404926', link)
