@@ -1,8 +1,10 @@
 """Première interface locale ; aucun prix ni connecteur réseau simulé."""
 import sys
+from importlib.resources import files
 from pathlib import Path
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QComboBox, QCompleter, QSpinBox, QPushButton, QTableView, QHeaderView,
@@ -292,6 +294,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName('KlmElec')
     app.setOrganizationName('KlmElec')
+    pixmap = QPixmap()
+    pixmap.loadFromData(files('klmelec').joinpath('assets/klmelec.png').read_bytes())
+    app.setWindowIcon(QIcon(pixmap))
     directory = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
     directory.mkdir(parents=True, exist_ok=True)
     store = Store(directory / 'klmelec.sqlite3')

@@ -1,5 +1,9 @@
 # Historique
 
+## 0.1.1 — 2026-11-13
+
+- Ajoute l’icône fournie aux ressources et l’utilise comme icône de l’application Qt.
+
 ## 0.1.0 — 2026-11-13
 
 - Ajoute la première interface PySide6 et le catalogue initial de 18 articles.
