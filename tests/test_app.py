@@ -103,3 +103,79 @@ def test_window_workflow(app, store, monkeypatch):
     assert not store.items()
     assert window.supplier_model.rowCount() == 2
     window.close()
+
+
+def test_background_comparison_and_history(app, store, monkeypatch):
+    import time
+    from threading import Event
+    from PySide6.QtTest import QTest
+    from klmelec.comparison import now
+    from klmelec import comparison_ui
+    entered, release = Event(), Event()
+
+    def fake_compare(items, suppliers, previous, progress, cancelled):
+        entered.set()
+        while not release.is_set() and not cancelled():
+            time.sleep(.005)
+        return [dict(product_id=items[0]['id'], reference=items[0]['reference'], quantity=2,
+                     supplier_id=s['id'], supplier=s['name'], connector=s['connector'],
+                     checked_at=now(), url='', status='ok', detail='Test', ttc='12.00', cached=False)
+                for s in suppliers]
+
+    monkeypatch.setattr(comparison_ui, 'compare', fake_compare)
+    product = next(p for p in store.products() if p['reference'] == '411617')
+    store.add_item(product['id'], 2)
+    window = MainWindow(store, 'test')
+    window.show()
+    window.start_comparison()
+    for _ in range(100):
+        if entered.is_set():
+            break
+        QTest.qWait(10)
+    assert entered.is_set()
+    assert window.worker.isRunning()
+    assert not window.material_table.isEnabled()
+    assert window.cancel_button.isEnabled()
+    # Qt can still process events while HTTP is pending.
+    window.tabs.setCurrentIndex(2)
+    assert window.tabs.currentIndex() == 2
+    release.set()
+    for _ in range(200):
+        QTest.qWait(10)
+        if window.worker is None:
+            break
+    assert window.worker is None
+    assert '24,00' in window.summary.text()
+    assert len(store.comparisons()) == 1
+    assert window.material_table.isEnabled()
+    window.history.setCurrentIndex(1)
+    assert 'prix non revérifiés' in window.report.toPlainText()
+    window.vat.setValue(10)
+    assert not window.material_model.offers
+    assert len(store.comparisons()) == 1
+    window.close()
+
+
+def test_close_cancels_worker_without_destroying_running_thread(app, store, monkeypatch):
+    import time
+    from PySide6.QtTest import QTest
+    from klmelec import comparison_ui
+
+    def wait_for_cancel(items, suppliers, previous, progress, cancelled):
+        while not cancelled():
+            time.sleep(.005)
+        return []
+
+    monkeypatch.setattr(comparison_ui, 'compare', wait_for_cancel)
+    store.add_item(store.products()[0]['id'], 1)
+    window = MainWindow(store, 'test')
+    window.show()
+    window.start_comparison()
+    window.close()
+    assert window.close_pending
+    for _ in range(200):
+        QTest.qWait(10)
+        if window.worker is None:
+            break
+    assert window.worker is None
+    assert not window.isVisible()

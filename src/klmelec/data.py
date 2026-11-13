@@ -43,6 +43,8 @@ class Store:
                     url TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
                     connector TEXT, archived INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+                CREATE TABLE IF NOT EXISTS comparisons (
+                    id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL);
             ''')
             if not self.db.execute("SELECT 1 FROM settings WHERE key='seeded'").fetchone():
                 for product in json.loads(files('klmelec').joinpath('catalog.json').read_text()):
@@ -97,6 +99,23 @@ class Store:
         # Retain the identity for future historical price references.
         with self.db:
             self.db.execute('UPDATE suppliers SET archived=1,active=0 WHERE id=?', (supplier_id,))
+
+    def save_comparison(self, payload):
+        with self.db:
+            self.db.execute('INSERT INTO comparisons(created_at,payload) VALUES (?,?)',
+                            (payload['date'], json.dumps(payload, ensure_ascii=False)))
+
+    def comparisons(self):
+        return [(row['id'], json.loads(row['payload'])) for row in self.db.execute(
+            'SELECT id,payload FROM comparisons ORDER BY id DESC LIMIT 20')]
+
+    def vat(self):
+        row = self.db.execute("SELECT value FROM settings WHERE key='vat'").fetchone()
+        return row['value'] if row else '20'
+
+    def save_vat(self, value):
+        with self.db:
+            self.db.execute("INSERT INTO settings VALUES ('vat',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (value,))
 
     def close(self):
         self.db.close()

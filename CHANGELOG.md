@@ -1,5 +1,16 @@
 # Historique
 
+## 0.2.0 — 2026-11-13
+
+- Active la comparaison en arrière-plan pour trois références Legrand chez 123 Elec et Elec Distrib.
+- Vérifie les références, marques, EAN, prix TTC, disponibilités et conditionnements ; exclut les lots.
+- Ajoute les offres détaillées, écarts au minimum et totaux HT/TTC en Decimal avec TVA configurable.
+- Affiche les échecs sans remplacer les anciens prix par zéro ni valider un minimum incomplet.
+- Conserve les relevés immuables et propose les vingt derniers dans l'historique.
+- Ajoute un cache explicite de cinq minutes, une actualisation forcée et l'annulation.
+- Consulte robots.txt et suspend les appels au site après HTTP 403 ou 429.
+- Préserve le catalogue, les fournisseurs et la liste existants ; ajoute une table de relevés.
+
 ## 0.1.1 — 2026-11-13
 
 - Ajoute l’icône fournie aux ressources et l’utilise comme icône de l’application Qt.

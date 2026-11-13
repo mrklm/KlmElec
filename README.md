@@ -2,7 +2,7 @@
 
 Application de bureau Python pour préparer une liste de matériel électrique.
 
-## Première version
+## Fonctionnalités
 
 - Catalogue initial de 18 articles issus du tableur Elec Lille.
 - Recherche par mots, marque et référence, sans distinction de casse ou d'accents.
@@ -11,9 +11,33 @@ Application de bureau Python pour préparer une liste de matériel électrique.
 - Sauvegarde automatique de la liste et des fournisseurs dans SQLite.
 
 123 Elec et Elec Distrib sont préconfigurés. Vous pouvez ajouter d'autres sites.
-Les connecteurs réseau seront intégrés à l'étape suivante : ajouter un fournisseur
-ne suffit pas à rendre ses prix accessibles. Le bouton de comparaison est désactivé
-et les prix restent absents, sans prix fictifs ni anciens prix présentés comme actuels.
+La comparaison fonctionne pour trois références Legrand : **406774, 411617 et 411638**.
+Les URL étudiées sont associées explicitement dans les connecteurs ; aucune recherche
+interne ni correspondance approximative n'est utilisée. Les autres références affichent
+« URL non configurée ». Ajouter un fournisseur ne suffit pas à rendre ses prix accessibles.
+
+Cliquez sur **Comparer les prix**, puis consultez **Offres et historique** pour les
+prix, statuts, dates, écarts et liens source. La recherche s'exécute en arrière-plan ;
+l'édition est temporairement désactivée pour conserver une liste cohérente. Le bouton
+Annuler attend la fin de la requête en cours ; fermer la fenêtre demande aussi son arrêt.
+
+Le minimum est validé uniquement si tous les fournisseurs activés renvoient une offre
+unitaire disponible et comparable. Un fournisseur sans connecteur, un échec, une
+rupture ou un lot empêche donc de déclarer un minimum pour cette ligne. Le lot de dix
+406774 d'Elec Distrib est exclu : aucun total complet si cette ligne figure dans la liste
+avec ce fournisseur actif. Les offres obtenues restent consultables individuellement.
+
+Le total du projet n'est affiché que lorsque toutes les lignes sont comparées. Les
+calculs utilisent Decimal, avec arrondi au centime, hors livraison. Le TTC provient du
+site ; le HT est **calculé** avec la TVA configurable (20 % initialement). Le total HT
+est arrondi après multiplication du HT non arrondi par la quantité.
+
+Un relevé réussi de moins de cinq minutes peut être réutilisé : son horodatage initial
+et la mention cache restent visibles. Cochez « Actualiser même si… » pour refaire les
+requêtes. Après cinq minutes, le minimum n'est plus validé ; la vue se met à jour au
+plus tard trente secondes après. Au redémarrage, les relevés sont uniquement historiques
+jusqu'à une nouvelle comparaison. Les vingt derniers sont proposés dans l'interface,
+mais tous sont conservés en base. Les erreurs n'écrasent jamais les anciens relevés.
 
 ## Installation et lancement
 
@@ -54,9 +78,17 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q
 Les tests utilisent des bases temporaires, jamais votre liste personnelle.
 Le stockage est isolé dans `data.py`, l'interface dans `app.py`.
 Les fournisseurs sont des données en base, indépendantes du catalogue. Le champ
-`connector` est un identifiant prévu pour les futurs connecteurs, pas du code exécutable.
-Il est effacé si le domaine d'un fournisseur change. L'interface commune des
-connecteurs sera définie avec la récupération effective des prix.
+`connector` est un identifiant, pas du code exécutable. Il est effacé si le domaine d'un
+fournisseur change. Pour ajouter un site compatible, implémentez le contrat `Connector`
+dans `suppliers/`, associez les URL vérifiées et enregistrez-le dans `CONNECTORS`.
+Le transport réseau et les calculs de `comparison.py` sont indépendants de Qt et SQLite.
+
+Les requêtes sont espacées d'au moins une seconde, sans redirection automatique, avec
+un délai réseau de 15 secondes et une taille maximale de réponse de 5 Mo. Les règles
+robots.txt sont consultées à chaque comparaison nécessitant le réseau ; un refus
+HTTP 403/429 suspend ce site pour le reste du relevé. Aucun contournement ni collecte
+de catalogue n'est effectué. La récupération demeure dépendante de la structure des
+sites et de leurs conditions d'accès ; voir les limites de l'étude.
 
 ## Étude des fournisseurs
 
