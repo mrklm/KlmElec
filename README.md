@@ -1,4 +1,4 @@
-# KlmElec — v1.0.1
+# KlmElec — v1.0.2
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
@@ -14,7 +14,7 @@ python -m klmelec
 ```
 
 Lancements suivants : `.venv/bin/python -m klmelec`.
-La version est centralisée dans `VERSION`, utilisée par le paquet Python et le titre de fenêtre.
+La version est centralisée dans `VERSION` : paquet Python, titre de fenêtre et identification auprès des fournisseurs.
 
 ## Fonctions
 
@@ -34,13 +34,21 @@ Catalogue, fournisseurs, lieux, préférences et historique sont conservés dans
 
 ## Périmètre et limites
 
-**123 Elec et Elec Distrib** disposent de connecteurs pour douze références Legrand : **404926, 405000, 405001, 406771, 406773, 406774, 406775, 406777, 411617, 411633, 411638, 412408**. **123 Elec** prend aussi en charge les quatre références Wago **WAG2106-5201, WAG2106-5204, WAG2106-5207, WAG2106-1291**.
+| Fournisseurs | Références prises en charge pour les prix |
+| --- | --- |
+| 123 Elec et Elec Distrib | Legrand : 404926, 405000, 405001, 406771, 406773, 406774, 406775, 406777, 411617, 411633, 411638, 412408 |
+| 123 Elec uniquement | Wago : WAG2106-5201, WAG2106-5204, WAG2106-5207, WAG2106-1291 |
+| 123 Elec uniquement | IKEPE : IKE821023 (tableau nu 3 rangées), IKE821053 (porte blanche) |
 
 Le catalogue et la couverture des prix sont distincts : un article sans fiche configurée reste utilisable dans une liste. Le minimum automatique exige des offres comparables chez tous les fournisseurs actifs ; une offre disponible seule peut être sélectionnée manuellement.
 
 Les relevés peuvent être réutilisés pendant cinq minutes. Une nouvelle comparaison rétablit les choix automatiques. Les remises par quantité ne sont pas calculées.
 
-La référence **405000** désigne un peigne **2 rangées**, malgré le libellé historique « Peigne 3r » de certaines listes. Le modèle **3 rangées, entraxe 125 mm**, est disponible au catalogue sous la référence **405001** ; il faut le sélectionner pour l’ajouter à une liste. Les références IKE et le câble générique RV2-3G6mm2 restent à identifier précisément avant comparaison. Voir le [diagnostic du relevé](docs/releve-2026-11-13.md).
+- **Peignes** : 405000 correspond à 2 rangées, malgré certains anciens libellés. Pour 3 rangées avec entraxe de 125 mm, sélectionner **405001**.
+- **Embouts IKE824302** : fiche identifiée, mais lot de cinq exclu du calcul unitaire tant que l’unité de la liste n’est pas définie.
+- **Câble RV2-3G6mm2** : fabricant et unité de vente à préciser avant comparaison.
+
+Les anciennes listes IKE portant la marque « À confirmer » restent compatibles. Voir le [diagnostic des références](docs/releve-2026-11-13.md).
 
 Les prix dépendent des sites fournisseurs. Les frais de livraison ne sont pas ajoutés au total. **YESSS Électrique** est proposé désactivé, sans connecteur ; **Leroy Merlin** n’est pas intégré. Ajouter un fournisseur ne crée pas de connecteur.
 

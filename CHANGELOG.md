@@ -1,5 +1,12 @@
 # Historique
 
+## 1.0.2 — 2026-11-13
+
+- Configure les fiches IKEPE IKE821023 (tableau nu 3 rangées) et IKE821053 (porte blanche) chez 123 Elec. Accepte la marque historique « À confirmer » uniquement pour les références IKE explicitement vérifiées, sans modifier les listes existantes.
+- Vérifie leur titre exact, SKU, marque et EAN même lorsque la référence est absente du titre.
+- Identifie IKE824302 comme un lot de cinq embouts : conserve la fiche accessible mais exclut son prix de la comparaison unitaire tant que l’unité de la liste n’est pas définie.
+- Valide ces changements avec 102 tests automatisés et les fiches publiques 123 Elec.
+
 ## 1.0.1 — 2026-11-13
 
 - Ajoute le peigne vertical Legrand 405001 (3 rangées, entraxe 125 mm) au catalogue et aux deux connecteurs. Enrichit les bases existantes sans remplacer les articles ni les quantités des listes.

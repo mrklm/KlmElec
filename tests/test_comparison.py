@@ -355,3 +355,41 @@ def test_recommended_products_tax_markup_is_not_main_product_tax():
                       '<span data-price-type="weee" data-price-amount="0.2"></span>'):
         with pytest.raises(OfferError, match='Éco-participation'):
             connector.parse(html + surcharge, '404926', link)
+
+
+@pytest.mark.parametrize('ref', ['IKE821023', 'IKE821053'])
+@pytest.mark.parametrize('catalog_brand', ['À confirmer', 'IKEPE'])
+def test_ikepe_exact_identity_with_reference_absent_from_title(ref, catalog_brand):
+    from bs4 import BeautifulSoup
+    link = CONNECTORS['123elec'].links[ref]
+    soup = BeautifulSoup(document(ref=ref), 'html.parser')
+    soup.h1.string = link.expected_title
+    html = str(soup)
+    items, suppliers = inputs(ref)
+    items[0]['brand'] = catalog_brand
+    def handler(request):
+        assert request.url.host == 'www.123elec.com'
+        return httpx.Response(200, text='User-agent: *\nAllow: /' if request.url.path == '/robots.txt' else html)
+    offers = run(handler, items=items, suppliers=suppliers)
+    assert offers[0]['status'] == 'ok'
+    assert offers[1]['status'] == 'error'
+    assert best_offer(offers) is None
+    connector = CONNECTORS['123elec']
+    for wrong in [html.replace(link.expected_title, 'Autre tableau'),
+                  html.replace(link.sku, 'IKE999999'),
+                  html.replace(link.ean, '0000000000000'),
+                  html.replace('"name": "IKEPE"', '"name": "Autre"')]:
+        with pytest.raises(OfferError):
+            connector.parse(wrong, ref, link)
+    items[0]['brand'] = 'Autre'
+    offers = run(lambda request: pytest.fail('Marque incohérente'), items=items)
+    assert offers[0]['status'] == 'error'
+
+
+def test_ikepe_end_caps_pack_not_silently_priced_as_single_piece():
+    items, suppliers = inputs('IKE824302')
+    items[0].update(brand='À confirmer', quantity=4)
+    offers = run(lambda request: pytest.fail('Lot exclu sans requête'), items=items, suppliers=suppliers[:1])
+    assert offers[0]['ttc'] is None
+    assert 'Lot de 5' in offers[0]['detail']
+    assert offers[0]['url'].endswith('ikepe-lot-de-5-embouts-isolants-pour-peigne-horizontal.html')

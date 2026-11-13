@@ -3,6 +3,9 @@ from .base import Connector, ProductLink, OfferError, money
 class Elec123(Connector):
     host = 'www.123elec.com'
     links = {
+        'IKE821023': ProductLink('https://www.123elec.com/ikepe-tableau-electrique-nu-3-rangees-13-modules.html', 'IKE821023', '3700609610231', pack=1, brand='IKEPE', expected_title='IKEPE Tableau électrique nu 3 rangées 13 modules', catalog_aliases=('À confirmer',)),
+        'IKE821053': ProductLink('https://www.123elec.com/ikepe-porte-blanche-pour-tableau-electrique-3-rangees-13-modules.html', 'IKE821053', '3700609610538', pack=1, brand='IKEPE', expected_title='IKEPE Porte blanche pour tableau électrique 3 rangées 13 modules', catalog_aliases=('À confirmer',)),
+        'IKE824302': ProductLink('https://www.123elec.com/ikepe-lot-de-5-embouts-isolants-pour-peigne-horizontal.html', 'IKE824302', '3700609643024', pack=5, brand='IKEPE', expected_title='IKEPE Lot de 5 embouts isolants pour peigne horizontal', catalog_aliases=('À confirmer',)),
         '405001': ProductLink('https://www.123elec.com/legrand-drivia-peigne-vertical-pour-tableau-electrique-drivia-3-rangees-entraxe-125-mm.html', 'LEG405001', '3245064050012'),
         '412408': ProductLink('https://www.123elec.com/legrand-cx3-telerupteur-16a.html', 'LEG412408', '3245064124089'),
         '404926': ProductLink('https://www.123elec.com/legrand-peigne-universel-d-alimentation-electrique-13-modules.html', 'LEG404926', '3245064049269'),

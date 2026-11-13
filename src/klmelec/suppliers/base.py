@@ -16,6 +16,8 @@ class ProductLink:
     pack: int = 1
     brand: str = 'Legrand'
     manufacturer_reference: str = ''
+    expected_title: str = ''
+    catalog_aliases: tuple[str, ...] = ()
 
 
 class OfferError(ValueError):
@@ -50,7 +52,9 @@ class Connector:
         soup = BeautifulSoup(html, 'html.parser')
         title = soup.find('h1')
         reference = link.manufacturer_reference or reference
-        if not title or not re.search(rf'(?<!\d){re.escape(reference)}(?!\d)', title.get_text()):
+        title_text = title.get_text(' ', strip=True) if title else ''
+        exact_title = bool(link.expected_title and title_text == link.expected_title)
+        if not title or (not exact_title and not re.search(rf'(?<!\d){re.escape(reference)}(?!\d)', title_text)):
             raise OfferError('Référence de la fiche non confirmée')
         if link.pack != 1 or re.search(r'\b(lot|pack)\b', title.get_text(), re.I):
             raise OfferError('Conditionnement non comparable')

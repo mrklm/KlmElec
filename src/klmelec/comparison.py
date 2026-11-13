@@ -81,7 +81,7 @@ def compare(items, suppliers, previous=(), progress=lambda text: None,
                 continue
             connector = CONNECTORS.get(supplier['connector'])
             link = connector.links.get(item['reference']) if connector else None
-            if link and item['brand'].casefold() != link.brand.casefold():
+            if link and item['brand'].casefold() not in {b.casefold() for b in (link.brand, *link.catalog_aliases)}:
                 link = None
             result = dict(product_id=item['id'], reference=item['reference'], quantity=item['quantity'],
                           supplier_id=supplier['id'], supplier=supplier['name'], connector=supplier['connector'],
