@@ -147,6 +147,63 @@ class Store:
                 self.db.executemany('INSERT INTO item_locations VALUES (?,?,?)',
                                     ((product_id, pos, location_id) for pos in range(total-quantity, total)))
 
+    def export_list(self):
+        assignments = self.assignments()
+        locations = {row['id']: row['name'] for row in self.locations()}
+        return {'format': 'klmelec-list', 'version': 1, 'items': [
+            {'brand': row['brand'], 'reference': row['reference'], 'quantity': row['quantity'],
+             'locations': [locations.get(assignments.get((row['id'], pos))) for pos in range(row['quantity'])]}
+            for row in self.items()]}
+
+    def clear_list(self):
+        with self.db:
+            self.db.execute('DELETE FROM items')
+
+    def validate_list(self, payload):
+        if (not isinstance(payload, dict) or payload.get('format') != 'klmelec-list'
+                or type(payload.get('version')) is not int or payload['version'] != 1
+                or not isinstance(payload.get('items'), list)):
+            raise ValueError('Ce fichier n’est pas une liste KLM Elec compatible.')
+        products = {(p['brand'], p['reference']): p['id'] for p in self.products()}
+        validated, seen = [], set()
+        for item in payload['items']:
+            if not isinstance(item, dict) or not all(isinstance(item.get(key), str) for key in ('brand', 'reference')):
+                raise ValueError('Une référence du fichier est invalide.')
+            product_id = products.get((item['brand'], item['reference']))
+            if product_id is None:
+                raise ValueError(f"Référence absente du catalogue : {item['brand']} {item['reference']}.")
+            quantity, places = item.get('quantity'), item.get('locations')
+            if (product_id in seen or type(quantity) is not int or not 1 <= quantity <= 99999
+                    or not isinstance(places, list) or len(places) != quantity):
+                raise ValueError('Quantité, affectations ou référence en double invalides.')
+            cleaned = []
+            for place in places:
+                if place is None:
+                    cleaned.append(None)
+                    continue
+                if not isinstance(place, str):
+                    raise ValueError('Un lieu du fichier est invalide.')
+                place = ' '.join(place.split())
+                if not 1 <= len(place) <= 80 or normalize(place) in ('non affecte', 'lieux multiples'):
+                    raise ValueError('Un lieu du fichier est invalide.')
+                cleaned.append(place)
+            seen.add(product_id)
+            validated.append((product_id, quantity, cleaned))
+        return validated
+
+    def import_list(self, payload):
+        validated = self.validate_list(payload)
+        with self.db:
+            self.db.execute('DELETE FROM items')
+            for product_id, quantity, places in validated:
+                self.db.execute('INSERT INTO items VALUES (?,?)', (product_id, quantity))
+                for ordinal, place in enumerate(places):
+                    if place is not None:
+                        key = normalize(place)
+                        self.db.execute('INSERT OR IGNORE INTO locations(name,normalized) VALUES (?,?)', (place, key))
+                        location_id = self.db.execute('SELECT id FROM locations WHERE normalized=?', (key,)).fetchone()['id']
+                        self.db.execute('INSERT INTO item_locations VALUES (?,?,?)', (product_id, ordinal, location_id))
+
     def set_quantity(self, product_id, quantity):
         if type(quantity) is not int or not 1 <= quantity <= 99999:
             raise ValueError('Veuillez saisir une quantité entre 1 et 99 999.')
@@ -185,6 +242,23 @@ class Store:
     def comparisons(self):
         return [(row['id'], json.loads(row['payload'])) for row in self.db.execute(
             'SELECT id,payload FROM comparisons ORDER BY id DESC LIMIT 20')]
+
+    def theme(self):
+        row = self.db.execute("SELECT value FROM settings WHERE key='theme'").fetchone()
+        return row['value'] if row else None
+
+    def theme_option(self, key):
+        row = self.db.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+        return bool(row and row['value'] == '1')
+
+    def save_theme_option(self, key, enabled):
+        with self.db:
+            self.db.execute('INSERT INTO settings VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+                            (key, '1' if enabled else '0'))
+
+    def save_theme(self, name):
+        with self.db:
+            self.db.execute("INSERT INTO settings VALUES ('theme',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (name,))
 
     def vat(self):
         row = self.db.execute("SELECT value FROM settings WHERE key='vat'").fetchone()

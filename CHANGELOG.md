@@ -1,5 +1,17 @@
 # Historique
 
+## 0.4.0 — 2026-11-13
+
+- Regroupe Apparence, Lieux, Fournisseurs, Offres et historique et Listes dans Paramètres.
+- Ajoute les 16 thèmes Garage avec application immédiate et deux options désactivées par défaut : persistance du thème et choix aléatoire au lancement. Le mode aléatoire est prioritaire si les deux sont activés.
+- Permet d’enregistrer et de charger les références, quantités et lieux dans un fichier JSON. Vérifie le fichier avant chargement et confirme le remplacement d’une liste existante.
+- Ouvre une liste vide à chaque démarrage, tout en conservant catalogue, fournisseurs, lieux, paramètres et historique. Les listes doivent être enregistrées dans un fichier pour être réutilisées.
+- Propose l’enregistrement à la fermeture d’une liste non vide ; demande confirmation en cas de refus et garde l’application ouverte si l’enregistrement est annulé ou échoue.
+- Affiche le logo rond en 96 px au-dessus des onglets centrés et l’utilise comme icône de l’application.
+- Affiche la version du projet dans le titre « KlmElec v0.4.0 ».
+- Déplace l’aide dans l’onglet « ? » à droite et la structure en six rubriques défilables.
+- Ajoute les tests des thèmes, de la navigation, des fichiers de listes et de la fermeture ; actualise le README.
+
 ## 0.3.1 — 2026-11-13
 
 - Corrige l’association Elec Distrib de la référence 406774 : utilise la fiche unitaire au lieu du lot de dix.

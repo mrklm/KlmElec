@@ -104,6 +104,164 @@ def test_window_workflow(app, store, monkeypatch):
     window.close()
 
 
+def test_settings_sections_and_theme_persistence(app, tmp_path):
+    from PySide6.QtGui import QPalette
+    from klmelec.themes import THEMES, DEFAULT_THEME
+
+    path = tmp_path / 'themes.sqlite3'
+    db = Store(path)
+    window = MainWindow(db, 'test')
+    window.show()
+    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', '?']
+    assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
+        'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes']
+    assert window.theme_selector.currentText() == DEFAULT_THEME
+    assert window.theme_selector.count() == 16
+    assert not window.persistent_themes.isChecked()
+    assert not window.random_themes.isChecked()
+    assert not window.header_icon.pixmap().isNull()
+    app.processEvents()
+    bar = window.tabs.tabBar()
+    assert abs(bar.geometry().center().x() - window.tabs.rect().center().x()) <= 2
+    window.persistent_themes.setChecked(True)
+    for name, colors in THEMES.items():
+        window.theme_selector.setCurrentText(name)
+        app.processEvents()
+        assert window.palette().color(QPalette.Window).name().upper() == colors['BG']
+        assert window.search.palette().color(QPalette.Base).name().upper() == colors['FIELD']
+        assert window.report.palette().color(QPalette.Text).name().upper() == colors['FIELD_FG']
+    chosen = window.theme_selector.currentText()
+    window.close()
+    db.close()
+
+    db = Store(path)
+    window = MainWindow(db, 'test')
+    assert window.theme_selector.currentText() == chosen
+    assert db.theme() == chosen
+    window.close()
+    db.save_theme('Thème inconnu')
+    window = MainWindow(db, 'test')
+    assert window.theme_selector.currentText() == DEFAULT_THEME
+    window.close()
+    db.close()
+
+
+def test_save_and_load_list_buttons(app, store, tmp_path, monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+
+    path = tmp_path / 'liste.json'
+    store.add_item(store.products()[0]['id'], 3, store.locations()[0]['id'])
+    expected = store.export_list()
+    window = MainWindow(store, 'test')
+    assert max(window.header_icon.pixmap().width(), window.header_icon.pixmap().height()) == 96
+    monkeypatch.setattr(QFileDialog, 'getSaveFileName', lambda *args: (str(path), ''))
+    window.save_list_button.click()
+    assert path.exists()
+    store.set_quantity(store.products()[0]['id'], 7)
+    monkeypatch.setattr(QFileDialog, 'getOpenFileName', lambda *args: (str(path), ''))
+    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.No)
+    window.load_list_button.click()
+    assert store.items()[0]['quantity'] == 7
+    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.Yes)
+    window.load_list_button.click()
+    assert store.export_list() == expected
+    assert window.material_model.rowCount() == 1
+    assert window.tabs.currentIndex() == 0
+    warnings = []
+    monkeypatch.setattr(QMessageBox, 'warning', lambda *args: warnings.append(args))
+    path.write_text('invalid json')
+    window.load_list_button.click()
+    assert warnings
+    assert store.export_list() == expected
+    window.close()
+
+
+@pytest.mark.parametrize('answers,saved,accepted', [
+    ([QMessageBox.Yes], True, True),
+    ([QMessageBox.Yes], False, False),
+    ([QMessageBox.No, QMessageBox.Yes], False, True),
+    ([QMessageBox.No, QMessageBox.No], False, False),
+])
+def test_close_save_or_confirm_discard(app, store, monkeypatch, answers, saved, accepted):
+    from PySide6.QtGui import QCloseEvent
+
+    store.add_item(store.products()[0]['id'], 2)
+    window = MainWindow(store, 'test')
+    replies = iter(answers)
+    prompts, saves = [], []
+
+    def question(*args):
+        prompts.append(args[1])
+        return next(replies)
+
+    def save():
+        saves.append(True)
+        return saved
+
+    monkeypatch.setattr(QMessageBox, 'question', question)
+    monkeypatch.setattr(window, 'save_list', save)
+    event = QCloseEvent()
+    window.closeEvent(event)
+    assert event.isAccepted() == accepted
+    assert len(prompts) == len(answers)
+    assert bool(saves) == (answers[0] == QMessageBox.Yes)
+    assert store.items()[0]['quantity'] == 2
+    store.clear_list()
+    window.close()
+
+
+def test_cancel_save_file_keeps_window_open(app, store, monkeypatch):
+    from PySide6.QtWidgets import QFileDialog
+
+    store.add_item(store.products()[0]['id'], 1)
+    window = MainWindow(store, 'test')
+    window.show()
+    monkeypatch.setattr(QMessageBox, 'question', lambda *args: QMessageBox.Yes)
+    monkeypatch.setattr(QFileDialog, 'getSaveFileName', lambda *args: ('', ''))
+    assert not window.close()
+    assert window.isVisible()
+    assert store.items()
+    store.clear_list()
+    window.close()
+
+
+def test_optional_and_random_themes(app, store, monkeypatch):
+    from klmelec.themes import THEMES, DEFAULT_THEME
+
+    chosen = '[Clair] Latte Vanille'
+    store.save_theme(chosen)
+    window = MainWindow(store, 'test')
+    assert window.theme_selector.currentText() == DEFAULT_THEME
+    window.theme_selector.setCurrentText('[Clair] Matin Brumeux')
+    assert store.theme() == chosen
+    window.random_themes.setChecked(True)
+    window.close()
+
+    def choose_theme(names):
+        assert names == list(THEMES)
+        return chosen
+
+    monkeypatch.setattr('klmelec.app.random.choice', choose_theme)
+    window = MainWindow(store, 'test')
+    assert window.random_themes.isChecked()
+    assert not window.persistent_themes.isChecked()
+    assert window.theme_selector.currentText() == chosen
+    window.persistent_themes.setChecked(True)
+    window.theme_selector.setCurrentText('[Clair] Matin Brumeux')
+    window.close()
+    window = MainWindow(store, 'test')
+    assert window.persistent_themes.isChecked()
+    assert window.theme_selector.currentText() == chosen
+    window.random_themes.setChecked(False)
+    window.persistent_themes.setChecked(False)
+    window.close()
+    window = MainWindow(store, 'test')
+    assert window.theme_selector.currentText() == DEFAULT_THEME
+    assert not window.random_themes.isChecked()
+    assert not window.persistent_themes.isChecked()
+    window.close()
+
+
 def test_background_comparison_and_history(app, store, monkeypatch):
     import time
     from threading import Event
@@ -134,10 +292,14 @@ def test_background_comparison_and_history(app, store, monkeypatch):
     assert entered.is_set()
     assert window.worker.isRunning()
     assert not window.material_table.isEnabled()
+    assert not window.load_list_button.isEnabled()
     assert window.cancel_button.isEnabled()
     # Qt can still process events while HTTP is pending.
-    window.tabs.setCurrentIndex(2)
-    assert window.tabs.currentIndex() == 2
+    window.tabs.setCurrentIndex(1)
+    window.settings_sections.setCurrentIndex(3)
+    assert window.settings_sections.currentWidget().isEnabled()
+    assert window.history.isVisible()
+    assert window.theme_selector.isEnabled()
     release.set()
     for _ in range(200):
         QTest.qWait(10)

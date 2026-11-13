@@ -1,24 +1,29 @@
 """Interface de préparation et de comparaison de matériel électrique."""
 import sys
+import random
+import json
+import sqlite3
 from decimal import Decimal
 from importlib.resources import files
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel, QTimer
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel, QTimer, QSaveFile, QIODevice
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QComboBox, QCompleter, QSpinBox, QPushButton, QTableView, QHeaderView,
     QMessageBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit,
     QCheckBox, QTabWidget, QAbstractItemView,
-    QTextBrowser, QDoubleSpinBox, QTreeView, QListWidget,
+    QTextBrowser, QDoubleSpinBox, QTreeView, QListWidget, QFileDialog,
 )
 
 from .data import Store, matches
+from . import __version__
 from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
 from .suppliers import CONNECTORS
 from .material import MaterialModel, MaterialDelegate
+from .themes import THEMES, DEFAULT_THEME, apply_theme
 
 
 class SupplierModel(QAbstractTableModel):
@@ -102,18 +107,25 @@ class MainWindow(QMainWindow):
         self.worker = None
         self.close_pending = False
         self.current_payload = None
-        self.setWindowTitle('KLM Elec — Préparation du matériel')
+        self.setWindowTitle(f'KlmElec v{__version__}')
         self.resize(1200, 700)
+        central = QWidget()
+        central_layout = QVBoxLayout(central)
+        self.header_icon = QLabel()
+        pixmap = QPixmap()
+        pixmap.loadFromData(files('klmelec').joinpath('assets/klmelec-rond.png').read_bytes())
+        self.header_icon.setPixmap(pixmap.scaled(96, 96, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        self.header_icon.setAlignment(Qt.AlignCenter)
+        self.header_icon.setAccessibleName('KLM Elec')
+        central_layout.addWidget(self.header_icon)
         tabs = QTabWidget()
-        self.setCentralWidget(tabs)
+        central_layout.addWidget(tabs)
+        self.setCentralWidget(central)
         material = QWidget()
         layout = QVBoxLayout(material)
         heading = QLabel('Votre liste de matériel')
         heading.setStyleSheet('font-size: 22px; font-weight: 600;')
         layout.addWidget(heading)
-        note = QLabel('Recherchez une désignation, une marque ou une référence. Les mots peuvent être saisis dans n’importe quel ordre.')
-        note.setWordWrap(True)
-        layout.addWidget(note)
         controls = QHBoxLayout()
         self.search = QComboBox()
         self.search.setEditable(True)
@@ -185,10 +197,6 @@ class MainWindow(QMainWindow):
         layout.addLayout(settings)
         self.summary = QLabel()
         layout.addWidget(self.summary)
-        layout.addWidget(QLabel('Prix unitaires TTC : le liseré rouge indique le minimum confirmé (égalités incluses). Survolez une offre pour sa date et son statut.'))
-        layout.addWidget(QLabel('Dépliez une référence pour affecter chaque exemplaire. Le lieu de la ligne principale s’applique à tous.'))
-        layout.addWidget(QLabel('Double-cliquez sur une quantité pour la modifier ; une diminution retire les derniers exemplaires. Enregistrement automatique.'))
-        layout.addWidget(QLabel(f'Catalogue : {len(self.products)} articles. Les marques « À confirmer » et les références préfixées restent à vérifier.'))
         tabs.addTab(material, 'Matériel')
 
         suppliers = QWidget()
@@ -207,7 +215,6 @@ class MainWindow(QMainWindow):
             supplier_buttons.addWidget(button)
         supplier_buttons.addStretch()
         supplier_layout.addLayout(supplier_buttons)
-        tabs.addTab(suppliers, 'Fournisseurs')
         detail = QWidget()
         detail_layout = QVBoxLayout(detail)
         self.history = QComboBox()
@@ -216,12 +223,39 @@ class MainWindow(QMainWindow):
         self.report = QTextBrowser()
         self.report.setOpenExternalLinks(True)
         detail_layout.addWidget(self.report)
-        tabs.addTab(detail, 'Offres et historique')
         parameters = QWidget()
         parameters_layout = QVBoxLayout(parameters)
-        parameters_layout.addWidget(QLabel('Lieux disponibles pour les équipements'))
+        self.settings_sections = QTabWidget()
+        parameters_layout.addWidget(self.settings_sections)
+        appearance = QWidget()
+        appearance_layout = QFormLayout(appearance)
+        self.theme_selector = QComboBox()
+        self.theme_selector.addItems(THEMES)
+        self.persistent_themes = QCheckBox('Thèmes persistants')
+        self.persistent_themes.setChecked(store.theme_option('persistent_themes'))
+        self.persistent_themes.setToolTip('Retrouver le thème choisi au prochain lancement.')
+        self.random_themes = QCheckBox('Thèmes aléatoires')
+        self.random_themes.setChecked(store.theme_option('random_themes'))
+        self.random_themes.setToolTip('Choisir un thème au hasard à chaque lancement, même si la persistance est activée.')
+        saved_theme = store.theme()
+        initial_theme = saved_theme if self.persistent_themes.isChecked() and saved_theme in THEMES else DEFAULT_THEME
+        if self.random_themes.isChecked():
+            initial_theme = random.choice(list(THEMES))
+        self.theme_selector.setCurrentText(initial_theme)
+        appearance_layout.addRow('Thème', self.theme_selector)
+        appearance_layout.addRow(self.persistent_themes)
+        appearance_layout.addRow(self.random_themes)
+        self.persistent_themes.toggled.connect(self.change_theme_persistence)
+        self.random_themes.toggled.connect(lambda enabled: store.save_theme_option('random_themes', enabled))
+        self.theme_selector.currentTextChanged.connect(self.change_theme)
+        apply_theme(QApplication.instance(), self.theme_selector.currentText())
+        self.setStyleSheet('QTabWidget::tab-bar { alignment: center; }')
+        self.settings_sections.addTab(appearance, 'Apparence')
+        locations = QWidget()
+        locations_layout = QVBoxLayout(locations)
+        locations_layout.addWidget(QLabel('Lieux disponibles pour les équipements'))
         self.place_list = QListWidget()
-        parameters_layout.addWidget(self.place_list)
+        locations_layout.addWidget(self.place_list)
         place_controls = QHBoxLayout()
         self.place_name = QLineEdit()
         self.place_name.setPlaceholderText('Exemple : Chambre #1')
@@ -230,14 +264,104 @@ class MainWindow(QMainWindow):
         add_place_button.clicked.connect(self.add_location)
         self.place_name.returnPressed.connect(self.add_location)
         place_controls.addWidget(add_place_button)
-        parameters_layout.addLayout(place_controls)
-        parameters_layout.addWidget(QLabel('Les lieux servent à préparer la répartition des équipements. Ils ne changent pas les prix.'))
+        locations_layout.addLayout(place_controls)
+        locations_layout.addWidget(QLabel('Les lieux servent à préparer la répartition des équipements. Ils ne changent pas les prix.'))
+        self.settings_sections.addTab(locations, 'Lieux')
+        self.settings_sections.addTab(suppliers, 'Fournisseurs')
+        self.settings_sections.addTab(detail, 'Offres et historique')
+        lists = QWidget()
+        lists_layout = QVBoxLayout(lists)
+        lists_note = QLabel('Enregistrez vos références, quantités et lieux dans un fichier. Charger une liste remplace la liste actuelle après confirmation.')
+        lists_note.setWordWrap(True)
+        lists_layout.addWidget(lists_note)
+        self.save_list_button = QPushButton('Enregistrer une liste')
+        self.save_list_button.clicked.connect(self.save_list)
+        lists_layout.addWidget(self.save_list_button)
+        self.load_list_button = QPushButton('Charger une liste')
+        self.load_list_button.clicked.connect(self.load_list)
+        lists_layout.addWidget(self.load_list_button)
+        lists_layout.addStretch()
+        self.settings_sections.addTab(lists, 'Listes')
         tabs.addTab(parameters, 'Paramètres')
+        help_page = QWidget()
+        help_layout = QVBoxLayout(help_page)
+        help_heading = QLabel('Aide')
+        help_heading.setStyleSheet('font-size: 22px; font-weight: 600;')
+        help_layout.addWidget(help_heading)
+        help_content = QTextBrowser()
+        help_content.setHtml(f'''
+            <p><b>À retenir :</b> l’application démarre avec une liste vide.
+            Enregistrez votre liste dans un fichier pour la retrouver plus tard.</p>
+
+            <h3>1. Préparer votre liste de matériel</h3>
+            <ul>
+                <li>Dans <b>Matériel</b>, recherchez une désignation, une marque ou une référence.
+                Les mots peuvent être saisis dans n’importe quel ordre, par exemple « disj 16 ».</li>
+                <li>Sélectionnez l’article, indiquez la quantité et éventuellement le lieu,
+                puis cliquez sur <b>Ajouter</b>. Les ajouts d’une même référence sont regroupés.</li>
+                <li>Double-cliquez sur une quantité pour la modifier.
+                Une diminution retire les derniers exemplaires.</li>
+                <li>Pour retirer un article ou un exemplaire, sélectionnez sa ligne
+                puis cliquez sur <b>Supprimer la sélection</b>.</li>
+            </ul>
+
+            <h3>2. Répartir les équipements par lieu</h3>
+            <ul>
+                <li>Le lieu choisi sur la ligne principale s’applique à tous les exemplaires.</li>
+                <li>Dépliez une référence pour affecter un lieu à chaque exemplaire.</li>
+                <li>Ajoutez vos lieux dans <b>Paramètres → Lieux</b>.
+                Les affectations ne changent pas les prix.</li>
+            </ul>
+
+            <h3>3. Comparer les prix</h3>
+            <ul>
+                <li>Gérez les fournisseurs actifs dans <b>Paramètres → Fournisseurs</b>.
+                Un fournisseur ajouté nécessite un connecteur compatible pour récupérer ses prix.</li>
+                <li>Dans <b>Matériel</b>, cliquez sur <b>Comparer les prix</b>.
+                Vous pouvez annuler une recherche en cours.</li>
+                <li>Les colonnes affichent les prix unitaires TTC. Le liseré rouge indique
+                le minimum confirmé, égalités incluses. Les lots sont exclus du minimum unitaire.</li>
+                <li>Survolez une offre pour voir sa date et son statut.
+                Consultez les détails des relevés dans <b>Paramètres → Offres et historique</b>.</li>
+                <li>Le taux de TVA sert au calcul du HT. Cochez l’actualisation pour renouveler
+                les prix même si un relevé date de moins de cinq minutes.</li>
+            </ul>
+
+            <h3>4. Enregistrer, charger et quitter</h3>
+            <ul>
+                <li>Dans <b>Paramètres → Listes</b>, <b>Enregistrer une liste</b> crée un fichier JSON
+                contenant les références, les quantités et les lieux affectés.</li>
+                <li><b>Charger une liste</b> remplace la liste actuelle après confirmation
+                si elle contient du matériel.</li>
+                <li>À la fermeture d’une liste non vide, choisissez <b>Oui</b> pour l’enregistrer
+                ou <b>Non</b> pour quitter sans l’enregistrer, après une seconde confirmation.</li>
+                <li>Si vous annulez l’enregistrement ou s’il échoue, l’application reste ouverte.
+                Au prochain lancement, chargez votre fichier pour retrouver votre liste.</li>
+            </ul>
+
+            <h3>5. Choisir un thème</h3>
+            <p>Ouvrez <b>Paramètres → Apparence</b> et choisissez un thème dans la liste.
+            Le changement s’applique immédiatement.</p>
+            <ul>
+                <li><b>Thèmes persistants</b> : retrouve le thème choisi au prochain lancement.</li>
+                <li><b>Thèmes aléatoires</b> : choisit un thème au hasard à chaque lancement.
+                Cette option est prioritaire si les deux cases sont cochées.</li>
+                <li>Les deux options sont décochées par défaut.</li>
+            </ul>
+
+            <h3>6. Vérifier les références du catalogue</h3>
+            <p>Le catalogue contient <b>{len(self.products)} articles</b>.
+            Les marques « À confirmer » et les références préfixées restent à vérifier.</p>
+        ''')
+        help_layout.addWidget(help_content)
+        help_index = tabs.addTab(help_page, '?')
+        tabs.setTabToolTip(help_index, 'Aide')
+        tabs.tabBar().setAccessibleTabName(help_index, 'Aide')
         self.reload_places()
         self.tabs = tabs
         self.busy_widgets = [self.search, self.quantity, add, self.remove,
                              self.material_table, suppliers, self.vat, self.force_refresh,
-                             self.compare_button, self.add_place, parameters]
+                             self.compare_button, self.add_place, locations, self.load_list_button]
         self.load_history()
         self.statusBar().showMessage(f'Données locales : {location}')
         self.material_model.modelReset.connect(self.update_summary)
@@ -246,6 +370,61 @@ class MainWindow(QMainWindow):
         self.freshness_timer.setInterval(30000)
         self.freshness_timer.timeout.connect(self.refresh_freshness)
         self.freshness_timer.start()
+
+    def save_list(self):
+        path, _ = QFileDialog.getSaveFileName(self, 'Enregistrer une liste', 'liste-klmelec.json', 'Liste KLM Elec (*.json)')
+        if not path:
+            return
+        if not Path(path).suffix:
+            path += '.json'
+        data = json.dumps(self.store.export_list(), ensure_ascii=False, indent=2).encode('utf-8')
+        output = QSaveFile(path)
+        if not output.open(QIODevice.WriteOnly):
+            QMessageBox.warning(self, 'Enregistrement impossible', output.errorString())
+            return
+        if output.write(data) != len(data):
+            output.cancelWriting()
+            QMessageBox.warning(self, 'Enregistrement impossible', output.errorString())
+            return
+        if not output.commit():
+            QMessageBox.warning(self, 'Enregistrement impossible', output.errorString())
+            return
+        self.statusBar().showMessage(f'Liste enregistrée : {path}')
+        return True
+
+    def load_list(self):
+        if self.worker is not None:
+            return
+        path, _ = QFileDialog.getOpenFileName(self, 'Charger une liste', '', 'Liste KLM Elec (*.json)')
+        if not path:
+            return
+        try:
+            payload = json.loads(Path(path).read_text(encoding='utf-8'))
+            self.store.validate_list(payload)
+            if self.store.items() and QMessageBox.question(
+                    self, 'Remplacer la liste', 'Remplacer la liste actuelle par celle du fichier ?',
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+                return
+            self.store.import_list(payload)
+        except (OSError, ValueError, sqlite3.Error) as exc:
+            QMessageBox.warning(self, 'Chargement impossible', str(exc))
+            return
+        self.reload_places()
+        self.invalidate_comparison()
+        self.tabs.setCurrentIndex(0)
+        self.statusBar().showMessage(f'Liste chargée : {path}')
+
+    def change_theme(self, name):
+        self.setStyleSheet('')
+        apply_theme(QApplication.instance(), name)
+        self.setStyleSheet('QTabWidget::tab-bar { alignment: center; }')
+        if self.persistent_themes.isChecked():
+            self.store.save_theme(name)
+
+    def change_theme_persistence(self, enabled):
+        self.store.save_theme_option('persistent_themes', enabled)
+        if enabled:
+            self.store.save_theme(self.theme_selector.currentText())
 
     def refresh_freshness(self):
         if self.material_model.offers and self.worker is None:
@@ -343,6 +522,7 @@ class MainWindow(QMainWindow):
         self.worker.deleteLater()
         self.worker = None
         if self.close_pending:
+            self.close_pending = False
             self.close()
 
     def cancel_comparison(self):
@@ -356,8 +536,27 @@ class MainWindow(QMainWindow):
             self.close_pending = True
             self.cancel_comparison()
             event.ignore()
-        else:
-            event.accept()
+            return
+        if self.store.items():
+            answer = QMessageBox.question(
+                self, 'Enregistrer avant de quitter', 'Voulez-vous enregistrer la liste avant de quitter ?',
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if answer == QMessageBox.Yes:
+                if not self.save_list():
+                    event.ignore()
+                    return
+            elif answer == QMessageBox.No:
+                confirmation = QMessageBox.question(
+                    self, 'Quitter sans enregistrer',
+                    'Confirmez-vous la fermeture sans enregistrer ? La liste sera vide au prochain démarrage.',
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if confirmation != QMessageBox.Yes:
+                    event.ignore()
+                    return
+            else:
+                event.ignore()
+                return
+        event.accept()
 
     def edit_place(self, index):
         if index.column() == 4:
@@ -463,11 +662,12 @@ def main():
     app.setApplicationName('KlmElec')
     app.setOrganizationName('KlmElec')
     pixmap = QPixmap()
-    pixmap.loadFromData(files('klmelec').joinpath('assets/klmelec.png').read_bytes())
+    pixmap.loadFromData(files('klmelec').joinpath('assets/klmelec-rond.png').read_bytes())
     app.setWindowIcon(QIcon(pixmap))
     directory = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
     directory.mkdir(parents=True, exist_ok=True)
     store = Store(directory / 'klmelec.sqlite3')
+    store.clear_list()
     window = MainWindow(store, directory)
     window.show()
     try:

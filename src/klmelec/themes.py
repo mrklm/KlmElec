@@ -1,0 +1,47 @@
+"""Bibliothèque de thèmes Garage et adaptation à Qt."""
+from PySide6.QtGui import QColor, QPalette
+
+
+THEMES = {
+    '[Sombre] Midnight Garage': dict(BG='#151515', PANEL='#1F1F1F', FIELD='#2A2A2A', FG='#EAEAEA', FIELD_FG='#F0F0F0', ACCENT='#FF9800'),
+    '[Sombre] AIR-KLM Night flight': dict(BG='#0B1E2D', PANEL='#102A3D', FIELD='#16384F', FG='#EAF6FF', FIELD_FG='#FFFFFF', ACCENT='#00A1DE'),
+    '[Sombre] Café Serré': dict(BG='#1B120C', PANEL='#2A1C14', FIELD='#3A281D', FG='#F2E6D8', FIELD_FG='#FFF4E6', ACCENT='#C28E5C'),
+    '[Sombre] Matrix Déjà Vu': dict(BG='#000A00', PANEL='#001F00', FIELD='#003300', FG='#00FF66', FIELD_FG='#66FF99', ACCENT='#00FF00'),
+    '[Sombre] Miami Vice 1987': dict(BG='#14002E', PANEL='#2B0057', FIELD='#004D4D', FG='#FFF0FF', FIELD_FG='#FFFFFF', ACCENT='#00FFD5'),
+    '[Sombre] Cyber Licorne': dict(BG='#1A0026', PANEL='#2E004F', FIELD='#3D0066', FG='#F6E7FF', FIELD_FG='#FFFFFF', ACCENT='#FF2CF7'),
+    '[Clair] AIR-KLM Day flight': dict(BG='#EAF6FF', PANEL='#D6EEF9', FIELD='#FFFFFF', FG='#0B2A3F', FIELD_FG='#0B2A3F', ACCENT='#00A1DE'),
+    '[Clair] Matin Brumeux': dict(BG='#E6E7E8', PANEL='#D4D7DB', FIELD='#FFFFFF', FG='#1E1F22', FIELD_FG='#1E1F22', ACCENT='#6B7C93'),
+    '[Clair] Latte Vanille': dict(BG='#FAF6F1', PANEL='#EFE6DC', FIELD='#FFFFFF', FG='#3D2E22', FIELD_FG='#3D2E22', ACCENT='#D8B892'),
+    '[Clair] Miellerie La Divette': dict(BG='#E6B65C', PANEL='#F5E6CC', FIELD='#FFFFFF', FG='#50371A', FIELD_FG='#50371A', ACCENT='#F2B705'),
+    '[Pouêt] Chewing-gum Océan': dict(BG='#00A6C8', PANEL='#0083A1', FIELD='#00C7B7', FG='#082026', FIELD_FG='#082026', ACCENT='#FF4FD8'),
+    '[Pouêt] Pamplemousse': dict(BG='#FF4A1C', PANEL='#E63B10', FIELD='#FF7A00', FG='#1A0B00', FIELD_FG='#1A0B00', ACCENT='#00E5FF'),
+    '[Pouêt] Raisin Toxique': dict(BG='#7A00FF', PANEL='#5B00C9', FIELD='#B000FF', FG='#0F001A', FIELD_FG='#0F001A', ACCENT='#39FF14'),
+    '[Pouêt] Citron qui pique': dict(BG='#FFF200', PANEL='#E6D800', FIELD='#FFF7A6', FG='#1A1A00', FIELD_FG='#1A1A00', ACCENT='#0066FF'),
+    '[Pouêt] Barbie Apocalypse': dict(BG='#FF1493', PANEL='#004D40', FIELD='#1B5E20', FG='#E8FFF8', FIELD_FG='#FFFFFF', ACCENT='#FFEB3B'),
+    '[Pouêt] Compagnie Créole': dict(BG='#8B3A1A', PANEL='#F2C94C', FIELD='#FFFFFF', FG='#5A2E0C', FIELD_FG='#5A2E0C', ACCENT='#8B3A1A'),
+}
+DEFAULT_THEME = '[Sombre] Midnight Garage'
+
+
+def apply_theme(app, name):
+    colors = THEMES[name]
+    app.setStyle('Fusion')
+    palette = QPalette()
+    for role, key in {
+        'Window': 'BG', 'WindowText': 'FG', 'Base': 'FIELD',
+        'AlternateBase': 'PANEL', 'Text': 'FIELD_FG', 'Button': 'PANEL',
+        'ButtonText': 'FG', 'ToolTipBase': 'PANEL', 'ToolTipText': 'FG',
+        'Highlight': 'ACCENT', 'Link': 'ACCENT', 'LinkVisited': 'ACCENT',
+        'Accent': 'ACCENT', 'PlaceholderText': 'FG',
+    }.items():
+        palette.setColor(getattr(QPalette.ColorRole, role), QColor(colors[key]))
+    accent = QColor(colors['ACCENT'])
+    # Choose readable selection text independently of the theme's field text.
+    luminance = sum(weight * (channel / 12.92 if channel <= .04045 else ((channel + .055) / 1.055) ** 2.4)
+                    for weight, channel in zip((.2126, .7152, .0722), accent.getRgbF()[:3]))
+    palette.setColor(QPalette.HighlightedText, QColor('#000000' if luminance > .179 else '#FFFFFF'))
+    for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
+        muted = palette.color(role)
+        muted.setAlpha(130)
+        palette.setColor(QPalette.Disabled, role, muted)
+    app.setPalette(palette)
