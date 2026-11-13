@@ -1,5 +1,12 @@
 # Historique
 
+## 0.4.1 — 2026-11-13
+
+- Configure les fiches unitaires Legrand 406771 (2A), 406773 (10A), 406775 (20A) et 406777 (32A) chez 123 Elec et Elec Distrib, portant la couverture à huit références par fournisseur.
+- Conserve les contrôles de référence, EAN, prix TTC et conditionnement ; teste le rejet des lots pour ces quatre références.
+- Actualise la liste des références prises en charge dans Paramètres et le README.
+- Vérifie les cinq disjoncteurs 2A, 10A, 16A, 20A et 32A en conditions réelles : dix offres récupérées auprès des deux fournisseurs lors du contrôle du 13 novembre 2026. Les 64 tests automatisés passent.
+
 ## 0.4.0 — 2026-11-13
 
 - Regroupe Apparence, Lieux, Fournisseurs, Offres et historique et Listes dans Paramètres.

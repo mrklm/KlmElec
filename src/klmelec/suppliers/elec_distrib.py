@@ -5,6 +5,10 @@ from .base import Connector, ProductLink, OfferError, money
 class ElecDistrib(Connector):
     host = 'www.elecdistrib.fr'
     links = {
+        '406771': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/76-disjoncteur-phase-neutre-dnx3-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-2a-courbe-c-legrand-ref-406771-3245064067713.html', 'LEG-406771', '3245064067713', 1),
+        '406773': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/75-disjoncteur-phase-neutre-dnx3-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-10a-courbe-c-legrand-ref-406773-3245064067737.html', 'LEG-406773', '3245064067737', 1),
+        '406775': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/73-disjoncteur-phase-neutre-dnx3-4500-6-ka-arrivee-et-sortie-borne-a-vis-1pn-230v-20a-courbe-c-legrand-ref-406775-3245064067751.html', 'LEG-406775', '3245064067751', 1),
+        '406777': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/72-disjoncteur-phase-neutre-dnx-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-32a-courbe-c-legrand-ref-406777-3245064067775.html', 'LEG-406777', '3245064067775', 1),
         '411633': ProductLink('https://www.elecdistrib.fr/tableaux-composants/657-interrupteur-differentiel-63a-type-ac-3-modules-legrand-ref-411633-3245064116336.html', 'LEG-411633', '3245064116336', 1),
         '406774': ProductLink('https://www.elecdistrib.fr/disjoncteurs-legrand/74-disjoncteur-phase-neutre-dnx3-4500-6ka-arrivee-et-sortie-borne-a-vis-1pn-230v-16a-courbe-c-legrand-ref-406774-3245064067744.html', 'LEG-406774', '3245064067744', 1),
         '411617': ProductLink('https://www.elecdistrib.fr/interrupteurs-differentiels-legrand/69-dx3-40a-type-a-legrand-ref-411617-3245064116176.html', 'LEG-411617', '3245064116176', 1),

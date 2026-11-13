@@ -1,7 +1,7 @@
 # KlmElec
 
 Application de bureau Python/PySide6 pour préparer et comparer une liste de matériel électrique.
-Version actuelle : **0.4.0**, définie dans `VERSION` et affichée dans la barre de titre.
+Version actuelle : **0.4.1**, définie dans `VERSION` et affichée dans la barre de titre.
 
 ## Installation et lancement
 
@@ -37,7 +37,12 @@ Le catalogue, les fournisseurs, les lieux, les préférences et les relevés res
 
 ## Comparaison : périmètre actuel
 
-123 Elec et Elec Distrib disposent de connecteurs pour les références Legrand **406774, 411617, 411633 et 411638**. Ajouter un fournisseur ne crée pas de connecteur ; les autres références peuvent afficher « URL non configurée ».
+123 Elec et Elec Distrib prennent en charge **huit références Legrand chacun** :
+
+- Disjoncteurs : **406771** (2A), **406773** (10A), **406774** (16A), **406775** (20A), **406777** (32A).
+- Interrupteurs différentiels : **411617, 411633, 411638**.
+
+Ajouter un fournisseur ne crée pas de connecteur ; les autres références peuvent afficher « URL non configurée ».
 
 Le minimum exige des offres unitaires disponibles et comparables chez tous les fournisseurs actifs. Les lots sont exclus. Un relevé récent peut être réutilisé pendant cinq minutes, sauf actualisation forcée. L’historique conserve les relevés sans garantir leurs prix actuels. La récupération dépend de la disponibilité et de la structure des sites.
 

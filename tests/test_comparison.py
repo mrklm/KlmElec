@@ -238,6 +238,42 @@ def test_411633_is_compared_by_exact_reference():
         connector.parse(document(ref='411633').replace('411633', '411650'), '411633', connector.links['411633'])
 
 
+@pytest.mark.parametrize('ref,ean,page', [
+    ('406771', '3245064067713', '76'),
+    ('406773', '3245064067737', '75'),
+    ('406775', '3245064067751', '73'),
+    ('406777', '3245064067775', '72'),
+])
+def test_missing_breakers_are_compared_as_exact_units(ref, ean, page):
+    items, suppliers = inputs(ref)
+    seen = []
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='User-agent: *\nAllow: /')
+        key = '123elec' if request.url.host == 'www.123elec.com' else 'elecdistrib'
+        seen.append(key)
+        assert str(request.url) == CONNECTORS[key].links[ref].url
+        return httpx.Response(200, text=document(key, ref=ref, price='9.00'))
+
+    offers = run(handler, items=items, suppliers=suppliers)
+    assert sorted(seen) == ['123elec', 'elecdistrib']
+    assert all(o['status'] == 'ok' and o['reference'] == ref for o in offers)
+    assert best_offer(offers) is not None
+    for key, connector in CONNECTORS.items():
+        link = connector.links[ref]
+        assert link.ean == ean and link.pack == 1
+        if key == 'elecdistrib':
+            assert f'/{page}-' in link.url
+        for html in (
+            document(key, ref=ref).replace('<h1>Legrand', '<h1>Lot de 10 Legrand'),
+            document(key, ref=ref, sku=link.sku + 'x10'),
+            document(key, ref=ref, gtin13='3245064067744'),
+        ):
+            with pytest.raises(OfferError):
+                connector.parse(html, ref, link)
+
+
 def test_406774_unit_offer_and_lot_rejection():
     items, suppliers = inputs('406774')
     connector = CONNECTORS['elecdistrib']
