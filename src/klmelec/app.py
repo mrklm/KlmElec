@@ -10,86 +10,15 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QComboBox, QCompleter, QSpinBox, QPushButton, QTableView, QHeaderView,
     QMessageBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit,
-    QCheckBox, QTabWidget, QAbstractItemView, QStyledItemDelegate,
-    QTextBrowser, QDoubleSpinBox,
+    QCheckBox, QTabWidget, QAbstractItemView,
+    QTextBrowser, QDoubleSpinBox, QTreeView, QListWidget,
 )
 
 from .data import Store, matches
-from .comparison import best_offer, amounts, now
+from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
 from .suppliers import CONNECTORS
-
-
-class MaterialModel(QAbstractTableModel):
-    HEADERS = ['Désignation', 'Marque', 'Référence', 'Quantité', 'PU HT', 'PU TTC',
-               'Fournisseur retenu', 'Total HT', 'Total TTC']
-
-    def __init__(self, store):
-        super().__init__()
-        self.store = store
-        self.rows = store.items()
-        self.offers = []
-        self.vat = store.vat()
-
-    def rowCount(self, parent=QModelIndex()):
-        return 0 if parent.isValid() else len(self.rows)
-
-    def columnCount(self, parent=QModelIndex()):
-        return 0 if parent.isValid() else len(self.HEADERS)
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
-            return self.HEADERS[section] if orientation == Qt.Horizontal else section + 1
-
-    def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid():
-            return None
-        if role in (Qt.DisplayRole, Qt.EditRole):
-            row = self.rows[index.row()]
-            offers = [o for o in self.offers if o['product_id'] == row['id']]
-            winner = best_offer(offers)
-            prices = ['—', '—', 'Comparaison incomplète' if offers else 'Non comparé', '—', '—']
-            if winner:
-                ht, ttc, total_ht, total_ttc = amounts(winner['ttc'], row['quantity'], self.vat)
-                names = [o['supplier'] for o in offers if Decimal(o['ttc']) == Decimal(winner['ttc'])]
-                prices = [euros(ht), euros(ttc), ', '.join(names), euros(total_ht), euros(total_ttc)]
-            return [row['name'], row['brand'], row['reference'], row['quantity'], *prices][index.column()]
-
-    def flags(self, index):
-        flags = super().flags(index)
-        if index.isValid() and index.column() == 3:
-            flags |= Qt.ItemIsEditable
-        return flags
-
-    def setData(self, index, value, role=Qt.EditRole):
-        if role != Qt.EditRole or not index.isValid() or index.column() != 3:
-            return False
-        try:
-            # The spin delegate provides integers, never rounded fractional values.
-            self.store.set_quantity(self.rows[index.row()]['id'], value)
-        except ValueError:
-            return False
-        self.refresh()
-        return True
-
-    def refresh(self):
-        self.beginResetModel()
-        self.rows = self.store.items()
-        self.endResetModel()
-
-
-class QuantityDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
-        editor = QSpinBox(parent)
-        editor.setRange(1, 99999)
-        return editor
-
-    def setEditorData(self, editor, index):
-        editor.setValue(index.data(Qt.EditRole))
-
-    def setModelData(self, editor, model, index):
-        editor.interpretText()
-        model.setData(index, editor.value())
+from .material import MaterialModel, MaterialDelegate
 
 
 class SupplierModel(QAbstractTableModel):
@@ -205,16 +134,32 @@ class MainWindow(QMainWindow):
         self.quantity = QSpinBox()
         self.quantity.setRange(1, 99999)
         controls.addWidget(self.quantity)
+        self.add_place = QComboBox()
+        self.add_place.setMinimumWidth(130)
+        self.reload_places()
+        controls.addWidget(QLabel('Lieu'))
+        controls.addWidget(self.add_place)
         add = QPushButton('Ajouter')
         add.clicked.connect(self.add_item)
         controls.addWidget(add)
         layout.addLayout(controls)
         self.material_model = MaterialModel(store)
-        self.material_table = table_for(self.material_model)
-        self.material_table.setItemDelegateForColumn(3, QuantityDelegate(self.material_table))
+        self.material_table = QTreeView()
+        self.material_table.setModel(self.material_model)
+        self.material_table.setUniformRowHeights(True)
+        self.material_table.setAlternatingRowColors(True)
+        self.material_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.material_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.material_table.header().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.material_table.header().setStretchLastSection(False)
+        self.material_table.setItemDelegate(MaterialDelegate(self.material_table))
+        self.material_table.clicked.connect(self.edit_place)
+        self.expanded_products = set()
+        self.material_model.modelAboutToBeReset.connect(self.save_expansion)
+        self.material_model.modelReset.connect(self.restore_expansion)
         layout.addWidget(self.material_table)
         bottom = QHBoxLayout()
-        self.remove = QPushButton('Supprimer la ligne sélectionnée')
+        self.remove = QPushButton('Supprimer la sélection')
         self.remove.clicked.connect(self.remove_item)
         bottom.addWidget(self.remove)
         self.compare_button = QPushButton('Comparer les prix')
@@ -240,7 +185,9 @@ class MainWindow(QMainWindow):
         layout.addLayout(settings)
         self.summary = QLabel()
         layout.addWidget(self.summary)
-        layout.addWidget(QLabel('Double-cliquez sur une quantité pour la modifier. Votre liste est enregistrée automatiquement.'))
+        layout.addWidget(QLabel('Prix unitaires TTC : le liseré rouge indique le minimum confirmé (égalités incluses). Survolez une offre pour sa date et son statut.'))
+        layout.addWidget(QLabel('Dépliez une référence pour affecter chaque exemplaire. Le lieu de la ligne principale s’applique à tous.'))
+        layout.addWidget(QLabel('Double-cliquez sur une quantité pour la modifier ; une diminution retire les derniers exemplaires. Enregistrement automatique.'))
         layout.addWidget(QLabel(f'Catalogue : {len(self.products)} articles. Les marques « À confirmer » et les références préfixées restent à vérifier.'))
         tabs.addTab(material, 'Matériel')
 
@@ -270,10 +217,27 @@ class MainWindow(QMainWindow):
         self.report.setOpenExternalLinks(True)
         detail_layout.addWidget(self.report)
         tabs.addTab(detail, 'Offres et historique')
+        parameters = QWidget()
+        parameters_layout = QVBoxLayout(parameters)
+        parameters_layout.addWidget(QLabel('Lieux disponibles pour les équipements'))
+        self.place_list = QListWidget()
+        parameters_layout.addWidget(self.place_list)
+        place_controls = QHBoxLayout()
+        self.place_name = QLineEdit()
+        self.place_name.setPlaceholderText('Exemple : Chambre #1')
+        place_controls.addWidget(self.place_name)
+        add_place_button = QPushButton('Ajouter le lieu')
+        add_place_button.clicked.connect(self.add_location)
+        self.place_name.returnPressed.connect(self.add_location)
+        place_controls.addWidget(add_place_button)
+        parameters_layout.addLayout(place_controls)
+        parameters_layout.addWidget(QLabel('Les lieux servent à préparer la répartition des équipements. Ils ne changent pas les prix.'))
+        tabs.addTab(parameters, 'Paramètres')
+        self.reload_places()
         self.tabs = tabs
         self.busy_widgets = [self.search, self.quantity, add, self.remove,
                              self.material_table, suppliers, self.vat, self.force_refresh,
-                             self.compare_button]
+                             self.compare_button, self.add_place, parameters]
         self.load_history()
         self.statusBar().showMessage(f'Données locales : {location}')
         self.material_model.modelReset.connect(self.update_summary)
@@ -285,7 +249,8 @@ class MainWindow(QMainWindow):
 
     def refresh_freshness(self):
         if self.material_model.offers and self.worker is None:
-            self.material_model.refresh()
+            self.material_model.refresh_prices()
+            self.update_summary()
             self.show_report()
 
     def invalidate_comparison(self):
@@ -361,7 +326,7 @@ class MainWindow(QMainWindow):
         self.material_model.vat = self.pending_payload['vat']
         self.material_model.refresh()
         self.load_history()
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(0)
         self.statusBar().showMessage('Relevé terminé — consultez les statuts et les dates des offres.')
 
     def comparison_failed(self, message):
@@ -394,6 +359,41 @@ class MainWindow(QMainWindow):
         else:
             event.accept()
 
+    def edit_place(self, index):
+        if index.column() == 4:
+            self.material_table.edit(index)
+
+    def save_expansion(self):
+        self.expanded_products = {row['id'] for i, row in enumerate(self.material_model.rows)
+                                  if self.material_table.isExpanded(self.material_model.index(i, 0))}
+
+    def restore_expansion(self):
+        for i, row in enumerate(self.material_model.rows):
+            if row['id'] in self.expanded_products:
+                self.material_table.setExpanded(self.material_model.index(i, 0), True)
+
+    def reload_places(self):
+        selected = self.add_place.currentData()
+        self.add_place.clear()
+        self.add_place.addItem('Non affecté', None)
+        for place in self.store.locations():
+            self.add_place.addItem(place['name'], place['id'])
+        self.add_place.setCurrentIndex(max(0, self.add_place.findData(selected)))
+        if hasattr(self, 'place_list'):
+            self.place_list.clear()
+            self.place_list.addItems([p['name'] for p in self.store.locations()])
+
+    def add_location(self):
+        try:
+            location_id = self.store.add_location(self.place_name.text())
+        except ValueError as exc:
+            QMessageBox.warning(self, 'Lieu incorrect', str(exc))
+            return
+        self.reload_places()
+        self.material_model.refresh()
+        self.add_place.setCurrentIndex(self.add_place.findData(location_id))
+        self.place_name.clear()
+
     def filter_products(self, query):
         self.suggestions.setStringList([label for label in self.labels if matches(query, label)])
 
@@ -401,7 +401,7 @@ class MainWindow(QMainWindow):
         rows = self.material_model.rows
         totals = []
         for row in rows:
-            winner = best_offer([o for o in self.material_model.offers if o['product_id'] == row['id']])
+            winner = self.material_model.winner(row)
             if winner:
                 totals.append(amounts(winner['ttc'], row['quantity'], self.material_model.vat)[2:])
         if rows and len(totals) == len(rows):
@@ -417,18 +417,8 @@ class MainWindow(QMainWindow):
         if product_id is None:
             QMessageBox.information(self, 'Choisissez un article', 'Veuillez sélectionner un article proposé avant de l’ajouter.')
             return
-        old = next((r for r in self.material_model.rows if r['id'] == product_id), None)
-        if old:
-            box = QMessageBox(self)
-            box.setWindowTitle('Article déjà présent')
-            box.setText(f'La liste contient déjà {old["quantity"]} unité(s). Voulez-vous ajouter {self.quantity.value()} unité(s) ?')
-            yes = box.addButton('Augmenter la quantité', QMessageBox.AcceptRole)
-            box.addButton('Annuler', QMessageBox.RejectRole)
-            box.exec()
-            if box.clickedButton() != yes:
-                return
         try:
-            self.store.add_item(product_id, self.quantity.value())
+            self.store.add_item(product_id, self.quantity.value(), self.add_place.currentData())
         except ValueError as exc:
             QMessageBox.warning(self, 'Quantité incorrecte', str(exc))
             return
@@ -437,7 +427,11 @@ class MainWindow(QMainWindow):
     def remove_item(self):
         index = self.material_table.currentIndex()
         if index.isValid():
-            self.store.remove_item(self.material_model.rows[index.row()]['id'])
+            product_id = self.material_model.item(index)['id']
+            if index.internalId():
+                self.store.remove_unit(product_id, index.row())
+            else:
+                self.store.remove_item(product_id)
             self.material_model.refresh()
 
     def supplier_dialog(self, supplier=None):

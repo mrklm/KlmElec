@@ -6,7 +6,9 @@ Application de bureau Python pour préparer une liste de matériel électrique.
 
 - Catalogue de 27 articles issus des tableurs Elec Lille, Braise/Musse et Samia.
 - Recherche par mots, marque et référence, sans distinction de casse ou d'accents.
-- Ajout de quantités, confirmation des doublons, modification et suppression des lignes.
+- Regroupement automatique par référence, quantités modifiables et exemplaires dépliables.
+- Affectation des lieux par exemplaire ou pour toute une référence ; ajout de lieux dans Paramètres.
+- Une colonne de prix unitaire TTC par fournisseur actif, minimum confirmé encadré en rouge.
 - Fournisseurs : ajout, modification, activation/désactivation et retrait.
 - Sauvegarde automatique de la liste et des fournisseurs dans SQLite.
 
@@ -16,8 +18,11 @@ Les URL étudiées sont associées explicitement dans les connecteurs ; aucune r
 interne ni correspondance approximative n'est utilisée. Les autres références affichent
 « URL non configurée ». Ajouter un fournisseur ne suffit pas à rendre ses prix accessibles.
 
-Cliquez sur **Comparer les prix**, puis consultez **Offres et historique** pour les
-prix, statuts, dates, écarts et liens source. La recherche s'exécute en arrière-plan ;
+Cliquez sur **Comparer les prix** : les offres apparaissent directement côte à côte
+dans le tableau Matériel. Le liseré rouge marque le minimum confirmé (toutes les offres
+à égalité sont encadrées). Une comparaison incomplète ou ancienne n’est pas encadrée.
+Survolez un prix pour sa date et son statut. Consultez **Offres et historique** pour
+les anciens relevés et les liens source. La recherche s'exécute en arrière-plan ;
 l'édition est temporairement désactivée pour conserver une liste cohérente. Le bouton
 Annuler attend la fin de la requête en cours ; fermer la fenêtre demande aussi son arrêt.
 
@@ -57,8 +62,27 @@ L'environnement du dépôt actuel est déjà installé. Pour le relancer :
 .venv/bin/python -m klmelec
 ```
 
-Dans l'onglet Matériel, sélectionnez une proposition, indiquez une quantité puis
-cliquez sur Ajouter. Double-cliquez sur une quantité du tableau pour la modifier.
+Dans l'onglet Matériel, sélectionnez une proposition, indiquez une quantité et
+éventuellement un lieu, puis cliquez sur Ajouter. Les ajouts de la même référence
+se regroupent automatiquement : le lieu choisi s'applique uniquement aux nouveaux
+exemplaires. Les affectations existantes sont conservées.
+
+Un triangle permet de déplier les exemplaires dès que la quantité dépasse un.
+Cliquez sur la cellule Lieu de la ligne principale pour affecter tous les exemplaires,
+ou sur celle d'un exemplaire pour ne modifier que lui. La ligne principale affiche
+le lieu commun, « Non affecté » ou « Lieux multiples ». Les prix restent sur la ligne
+principale ; les lieux n'interviennent pas dans la comparaison.
+
+Double-cliquez sur une quantité pour la modifier. Une augmentation ajoute des
+exemplaires non affectés ; une diminution retire les derniers exemplaires et leurs
+affectations. Supprimer la sélection retire toute la référence si la ligne principale
+est sélectionnée, ou seulement l'exemplaire si une sous-ligne est sélectionnée.
+
+Dans **Paramètres**, ajoutez par exemple « Chambre #1 ». Les dix lieux initiaux sont
+Salon, Cave, Cuisine, Garage, Chambre, Hall d’entrée, Couloir, Grenier, Salle à manger
+et Escalier. Les noms identiques, même sans accents ou avec une casse différente,
+ne créent pas de doublons. Le récapitulatif par lieu et l'onglet Plan restent prévus
+pour une étape ultérieure.
 Dans Fournisseurs, utilisez Ajouter ou Modifier ; la case « Activer ce fournisseur »
 contrôle son activation. Le retrait conserve l'identité en base pour un futur historique.
 
@@ -108,3 +132,17 @@ Elle lit six fiches publiques et conserve ses observations dans `local-study/`, 
 
 Version centralisée dans `VERSION`. Commits en français avec les préfixes
 `feat:`, `fix:`, `docs:`, `test:`, `chore:`. Aucun commit ni push automatique.
+
+## Compatibilité des lieux (0.3.0)
+
+Deux tables sont ajoutées : `locations` et `item_locations`. La table `items` et
+ses identifiants/quantités restent inchangés. Les anciens équipements ont un lieu
+non affecté implicitement ; il n'est pas nécessaire de recréer votre liste.
+Les affectations sont enregistrées dans la même transaction que les changements
+de quantité. Les fournisseurs et les relevés antérieurs ne sont pas réécrits.
+
+L'ancien code peut lire les quantités et les relevés de cette base, mais ne présente
+pas les lieux. Revenir au code précédent conserve les tables supplémentaires ; une
+restauration exacte nécessite une sauvegarde de la base. Ne pas utiliser les deux
+versions simultanément. Si une ancienne version réduit une quantité, les affectations
+des exemplaires retirés sont nettoyées au prochain démarrage de la nouvelle version.

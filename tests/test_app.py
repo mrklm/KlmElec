@@ -90,15 +90,14 @@ def test_window_workflow(app, store, monkeypatch):
     window.add_item()
     assert window.material_model.rowCount() == 1
     assert store.items()[0]['quantity'] == 3
-    # Reject the duplicate confirmation; quantity must remain unchanged.
-    monkeypatch.setattr(QMessageBox, 'exec', lambda self: None)
+    # Repeated additions now merge automatically.
     window.add_item()
-    assert store.items()[0]['quantity'] == 3
+    assert store.items()[0]['quantity'] == 6
     index = window.material_model.index(0, 3)
     assert window.material_model.setData(index, 8, Qt.EditRole)
     assert store.items()[0]['quantity'] == 8
     assert window.material_model.data(window.material_model.index(0, 5)) == '—'
-    window.material_table.selectRow(0)
+    window.material_table.setCurrentIndex(window.material_model.index(0, 0))
     window.remove_item()
     assert not store.items()
     assert window.supplier_model.rowCount() == 2

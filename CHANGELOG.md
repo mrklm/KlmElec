@@ -1,5 +1,15 @@
 # Historique
 
+## 0.3.0 — 2026-11-13
+
+- Affiche une colonne de prix TTC par fournisseur actif et encadre les minima confirmés en rouge, égalités comprises.
+- Regroupe automatiquement les ajouts d'une même référence et permet de déplier ses exemplaires.
+- Permet d'affecter un lieu à tous les exemplaires ou individuellement par ComboBox.
+- Ajoute dix lieux initiaux et la création de lieux dans Paramètres.
+- Conserve les affectations lors des ajouts ; retire les derniers exemplaires lors d'une diminution de quantité.
+- Préserve les listes, fournisseurs et relevés existants avec une extension additive de la base.
+- Garde le tableau Matériel affiché après la comparaison ; les détails restent dans Offres et historique.
+
 ## 0.2.2 — 2026-11-13
 
 - Configure la référence Legrand 411633 chez 123 Elec et Elec Distrib.
