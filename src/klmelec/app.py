@@ -241,7 +241,7 @@ class MainWindow(QMainWindow):
         self.summary = QLabel()
         layout.addWidget(self.summary)
         layout.addWidget(QLabel('Double-cliquez sur une quantité pour la modifier. Votre liste est enregistrée automatiquement.'))
-        layout.addWidget(QLabel('Catalogue initial : 18 articles du tableur. Les marques « À confirmer » et les préfixes IKE/WAG restent à vérifier.'))
+        layout.addWidget(QLabel(f'Catalogue : {len(self.products)} articles. Les marques « À confirmer » et les références préfixées restent à vérifier.'))
         tabs.addTab(material, 'Matériel')
 
         suppliers = QWidget()

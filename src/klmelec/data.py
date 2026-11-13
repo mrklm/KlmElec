@@ -54,6 +54,12 @@ class Store:
                     ('Elec Distrib', 'https://www.elecdistrib.fr/', 'elecdistrib'),
                 ])
                 self.db.execute("INSERT INTO settings VALUES ('seeded','1')")
+            # Add bundled references once per catalog revision. Existing names, IDs,
+            # quantities, suppliers and historical snapshots are never overwritten.
+            if not self.db.execute("SELECT 1 FROM settings WHERE key='catalog_2026_11_braise_samia'").fetchone():
+                for product in json.loads(files('klmelec').joinpath('catalog.json').read_text()):
+                    self.db.execute('INSERT OR IGNORE INTO products(name,brand,reference) VALUES (:name,:brand,:reference)', product)
+                self.db.execute("INSERT INTO settings VALUES ('catalog_2026_11_braise_samia','1')")
 
     def products(self):
         return self.db.execute('SELECT * FROM products ORDER BY name,reference').fetchall()

@@ -4,7 +4,7 @@ Application de bureau Python pour préparer une liste de matériel électrique.
 
 ## Fonctionnalités
 
-- Catalogue initial de 18 articles issus du tableur Elec Lille.
+- Catalogue de 27 articles issus des tableurs Elec Lille, Braise/Musse et Samia.
 - Recherche par mots, marque et référence, sans distinction de casse ou d'accents.
 - Ajout de quantités, confirmation des doublons, modification et suppression des lignes.
 - Fournisseurs : ajout, modification, activation/désactivation et retrait.
@@ -68,6 +68,13 @@ une seule liste de travail. Les projets multiples et l'import interactif viendro
 Le catalogue initial n'est pas modifiable dans l'interface à ce stade ; les références
 IKE/WAG et marques non confirmées sont conservées telles quelles. Le tableur source
 n'a pas été modifié et aucun ancien prix n'est importé.
+
+Les ajouts Braise/Musse et Samia sont intégrés automatiquement au prochain lancement,
+sans écraser les articles déjà enregistrés ni modifier la liste de travail.
+Les prix et quantités des tableurs ne sont pas importés. Consultez le
+[compte rendu des références](docs/import-braise-samia.md) pour les sources,
+les doublons et les lignes sans référence. Les neuf ajouts restent sans URL fournisseur
+configurée : leur comparaison automatique n'est pas encore disponible.
 
 ## Vérification
 

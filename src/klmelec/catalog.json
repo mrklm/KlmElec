@@ -88,5 +88,50 @@
     "name": "Câble 6mm2",
     "brand": "À confirmer",
     "reference": "RV2-3G6mm2"
+  },
+  {
+    "name": "Disjoncteur 32A",
+    "brand": "Legrand",
+    "reference": "406777"
+  },
+  {
+    "name": "Interrupteur différentiel 40A",
+    "brand": "Legrand",
+    "reference": "411611"
+  },
+  {
+    "name": "Tableau électrique 1 rangée",
+    "brand": "À confirmer",
+    "reference": "PHN820961"
+  },
+  {
+    "name": "Batibox",
+    "brand": "Legrand",
+    "reference": "080251"
+  },
+  {
+    "name": "Prise murale Mosaic",
+    "brand": "Legrand",
+    "reference": "278111"
+  },
+  {
+    "name": "Interrupteur 2 positions Mosaic",
+    "brand": "Legrand",
+    "reference": "278011L"
+  },
+  {
+    "name": "Douille E27",
+    "brand": "À confirmer",
+    "reference": "PHN847140"
+  },
+  {
+    "name": "Enjoliveur Mosaic",
+    "brand": "Legrand",
+    "reference": "078802"
+  },
+  {
+    "name": "Boîtier encastrable placo",
+    "brand": "À confirmer",
+    "reference": "cap036819"
   }
 ]

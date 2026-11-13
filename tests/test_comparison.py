@@ -206,7 +206,8 @@ def test_existing_database_upgrade_preserves_data(tmp_path):
     old.close()
     store = Store(path)
     assert store.items()[0]['quantity'] == 9
-    assert len(store.products()) == 1
+    assert len(store.products()) == 28  # Personal product plus the enriched bundled catalog.
+    assert next(p for p in store.products() if p['id'] == 42)['name'] == 'Produit personnel'
     assert store.suppliers()[0]['name'] == 'Personnel'
     assert not store.suppliers()[0]['active']
     assert store.comparisons() == []

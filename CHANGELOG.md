@@ -1,5 +1,12 @@
 # Historique
 
+## 0.2.1 — 2026-11-13
+
+- Ajoute neuf références des tableurs Braise/Musse et Samia, portant le catalogue fourni à 27 articles.
+- Enrichit automatiquement les bases existantes sans écraser les produits, listes ni historiques.
+- Conserve les zéros initiaux, suffixes et références fournisseur non confirmées.
+- Documente les lignes sans référence et les correspondances à confirmer ; aucun prix ancien importé.
+
 ## 0.2.0 — 2026-11-13
 
 - Active la comparaison en arrière-plan pour trois références Legrand chez 123 Elec et Elec Distrib.
