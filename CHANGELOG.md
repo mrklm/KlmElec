@@ -1,5 +1,10 @@
 # Historique
 
+## 0.2.2 — 2026-11-13
+
+- Configure la référence Legrand 411633 chez 123 Elec et Elec Distrib.
+- Affiche le nombre réel de références configurées par connecteur.
+
 ## 0.2.1 — 2026-11-13
 
 - Ajoute neuf références des tableurs Braise/Musse et Samia, portant le catalogue fourni à 27 articles.

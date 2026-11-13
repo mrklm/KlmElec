@@ -11,7 +11,7 @@ Application de bureau Python pour préparer une liste de matériel électrique.
 - Sauvegarde automatique de la liste et des fournisseurs dans SQLite.
 
 123 Elec et Elec Distrib sont préconfigurés. Vous pouvez ajouter d'autres sites.
-La comparaison fonctionne pour trois références Legrand : **406774, 411617 et 411638**.
+La comparaison fonctionne pour quatre références Legrand : **406774, 411617, 411633 et 411638**.
 Les URL étudiées sont associées explicitement dans les connecteurs ; aucune recherche
 interne ni correspondance approximative n'est utilisée. Les autres références affichent
 « URL non configurée ». Ajouter un fournisseur ne suffit pas à rendre ses prix accessibles.

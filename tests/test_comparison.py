@@ -212,3 +212,23 @@ def test_existing_database_upgrade_preserves_data(tmp_path):
     assert not store.suppliers()[0]['active']
     assert store.comparisons() == []
     store.close()
+
+
+def test_411633_is_compared_by_exact_reference():
+    items, suppliers = inputs('411633')
+    seen = []
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='User-agent: *\nAllow: /')
+        key = '123elec' if request.url.host == 'www.123elec.com' else 'elecdistrib'
+        assert str(request.url) == CONNECTORS[key].links['411633'].url
+        seen.append(key)
+        return httpx.Response(200, text=document(key, ref='411633', price='42.90' if key=='123elec' else '40.00'))
+    offers = run(handler, items=items, suppliers=suppliers)
+    assert set(seen) == {'123elec','elecdistrib'}
+    assert all(o['status']=='ok' and o['reference']=='411633' for o in offers)
+    assert best_offer(offers)['supplier'] == 'Elec Distrib'
+    # Similar 63A models must not be accepted as the requested reference.
+    connector = CONNECTORS['123elec']
+    with pytest.raises(OfferError):
+        connector.parse(document(ref='411633').replace('411633', '411650'), '411633', connector.links['411633'])
