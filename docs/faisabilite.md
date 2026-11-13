@@ -61,7 +61,7 @@ Aucun fournisseur gagnant global n'est déclaré par cette étude.
 
 Le domaine identifié est https://www.elecdistrib.fr/, dont les mentions légales
 nomment Elecdistrib. Sa correspondance avec le fournisseur historique du tableur
-reste à confirmer par l'utilisateur avant le développement du connecteur.
+a été confirmée par l'utilisateur, ainsi que 123 Elec.
 
 Les fichiers robots.txt ont été lus directement :
 - https://www.123elec.com/robots.txt exclut notamment `/catalogsearch/`.
