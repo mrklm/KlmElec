@@ -553,3 +553,61 @@ def test_pre_equipped_boards_family():
     assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', '200880'), ('elecdistrib', '093060')]
     assert [reason for *_, reason in result.rejected] == ['Hors famille']
     assert not any('prise' in url for url in calls)  # filtered by the sitemap address
+
+
+def test_communication_enclosure_family_skips_modules():
+    sitemap = 'https://www.123elec.com/media/sitemap/sitemap.xml'
+    category = 'https://www.elecdistrib.fr/24-coffret-de-communication-legrand-portes'
+    pages = {
+        sitemap: f'<urlset><url><loc>{E123}legrand-drivia-coffret-de-communication-grade-2tv-413248.html</loc></url></urlset>',
+        E123 + 'legrand-drivia-coffret-de-communication-grade-2tv-413248.html':
+            page('LEG413248', '3245064132480', 'LEGRAND Drivia Coffret de communication Grade 2TV 13 modules - 4RJ45 - 413248', 'LEGRAND'),
+        category: ''.join(f'<a href="{ED}{slug}">x</a>' for slug in (
+            '1-coffret-drivia-multimedia-legrand-ref-413261-3245064132619.html',
+            '2-dti-modulaire-rj45-pour-coffret-multimedia-legrand-ref-413008-3245064130080.html')),
+        ED + '1-coffret-drivia-multimedia-legrand-ref-413261-3245064132619.html':
+            page('LEG-413261', '3245064132619', 'Coffret Drivia multimédia 13 modules Double Play Legrand Réf: 413261'),
+        ED + '2-dti-modulaire-rj45-pour-coffret-multimedia-legrand-ref-413008-3245064130080.html':
+            page('LEG-413008', '3245064130080', 'DTI modulaire RJ45 pour coffret multimédia Legrand Réf: 413008'),
+    }
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = discover('coffrets-communication-legrand', client=client, pause=lambda _: None)
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', '413248'), ('elecdistrib', '413261')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille']
+
+
+def test_communication_modules_exclude_enclosures_with_patch_panel():
+    category = 'https://www.elecdistrib.fr/24-coffret-de-communication-legrand-portes'
+    slugs = {
+        '1-module-de-brassage-rj45-legrand-ref-413003-3245064130035.html':
+            ('LEG-413003', '3245064130035', 'Module de brassage RJ45 pour réseau multimédia Legrand Réf: 413003'),
+        '2-repartiteur-tv-legrand-ref-413013-3245064130134.html':
+            ('LEG-413013', '3245064130134', 'Répartiteur TV Hertzien TNT 6 sorties 4 modules Legrand Réf: 413013'),
+        '3-coffret-avec-brassage-legrand-ref-413218-3245064132183.html':
+            ('LEG-413218', '3245064132183', 'Coffret de communication basique avec brassage Legrand Réf: 413218'),
+        '4-porte-drivia-legrand-ref-401342-3245064013420.html':
+            ('LEG-401342', '3245064013420', 'Porte Drivia transparente IP40 - IK07 2 rangées 13 modules Legrand Réf: 401342'),
+    }
+    pages = {'https://www.123elec.com/media/sitemap/sitemap.xml': '<urlset></urlset>',
+             category: ''.join(f'<a href="{ED}{slug}">x</a>' for slug in slugs)}
+    pages.update({ED + slug: page(*data) for slug, data in slugs.items()})
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    found = {}
+    for family in ('modules-communication-legrand', 'coffrets-communication-legrand'):
+        with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+            found[family] = {ref for _, ref, _, _ in discover(family, client=client, pause=lambda _: None).links}
+    assert found == {'modules-communication-legrand': {'413003', '413013'},
+                     'coffrets-communication-legrand': {'413218'}}

@@ -1,5 +1,16 @@
 # Historique
 
+## 1.20.0 — 2026-11-14
+
+- Ajoute la famille « Modules de communication Legrand » (brassage, DTI, filtre, répartiteur TV, DTIO, support box) à Paramètres → Catalogue.
+- Permet de déclarer des familles complémentaires : une fiche retenue par l’une est écartée de l’autre (un coffret « avec brassage » reste un coffret).
+- Vérifié en conditions réelles le 14/11/2026 : 6 nouvelles références, toutes chez Elec Distrib (123 Elec n’en propose pas). Valide ces changements avec 158 tests automatisés.
+
+## 1.19.0 — 2026-11-14
+
+- Ajoute la famille « Coffrets de communication Legrand » (communication, multimédia, double ou triple play) à Paramètres → Catalogue ; les modules pour coffret (brassage, DTI, filtres, répartiteur TV, DTIO, support box) et les portes sont écartés.
+- Vérifié en conditions réelles le 14/11/2026 : 17 nouvelles références (3 fiches 123 Elec, 15 Elec Distrib, 1 refusée faute de disponibilité confirmée). Valide ces changements avec 157 tests automatisés.
+
 ## 1.18.0 — 2026-11-14
 
 - Ajoute la famille « Tableaux pré-équipés Legrand » (pré-équipés ou pré-câblés) à Paramètres → Catalogue ; les prises précâblées et les portes de la catégorie sont écartées.

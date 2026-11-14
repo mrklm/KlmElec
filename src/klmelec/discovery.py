@@ -34,6 +34,7 @@ class Family:
     elec123_url: tuple                # mots requis dans l'adresse du plan de site ; tuple imbriqué = l'un d'eux
     elecdistrib_categories: tuple[str, ...]
     required: tuple[str, ...] = ()    # si renseigné : l'un de ces mots doit aussi figurer (sans accents)
+    others: tuple[str, ...] = ()      # familles complémentaires : leurs fiches sont écartées d'ici
 
 
 GTL_ACCESSORY = ('pour gaine', 'pour goulotte', 'pour gtl', 'embout', 'jonction', 'cornet')
@@ -132,6 +133,13 @@ FAMILIES = {
         required=('communication', 'multimedia', 'play'), excluded=('pour coffret',),
         sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', 'coffret', ('communication', 'multimedia')),
         elecdistrib_categories=('https://www.elecdistrib.fr/24-coffret-de-communication-legrand-portes',)),
+    # Modules vendus seuls ; un « coffret … avec brassage » reste un coffret.
+    'modules-communication-legrand': Family(
+        label='Modules de communication Legrand', brand='Legrand',
+        keyword=('brassage', 'dti', 'filtre', 'repartiteur', 'terminaison', 'support box'),
+        excluded=(), others=('coffrets-communication-legrand',), sku_pattern=r'LEG-?(\d{6})',
+        elec123_url=('/legrand-', ('brassage', '-dti', 'filtre-maitre', 'repartiteur-tv', 'terminaison', 'support-box')),
+        elecdistrib_categories=('https://www.elecdistrib.fr/24-coffret-de-communication-legrand-portes',)),
 }
 
 PACK = re.compile(r'\b(?:lot|pack|bo[iî]te|sachet)\s+de\s+(\d+)\b', re.I)
@@ -168,6 +176,13 @@ class Session:
             self.pause(1)
 
 
+def belongs(words, family):
+    """Désignation (sans accents) conforme aux mots-clés, mots requis et exclusions de la famille."""
+    keywords = (family.keyword,) if isinstance(family.keyword, str) else family.keyword
+    return (any(word in words for word in keywords) and not any(word in words for word in family.excluded)
+            and (not family.required or any(word in words for word in family.required)))
+
+
 def identify(html, family):
     """SKU, EAN, titre et désignation de la fiche, sans encore valider l'offre."""
     soup = BeautifulSoup(html, 'html.parser')
@@ -195,9 +210,7 @@ def identify(html, family):
     if pack and int(pack.group(1)) != 1:
         raise OfferError(f'Lot de {pack.group(1)} : exclu de la comparaison unitaire')
     words = plain(name)
-    keywords = (family.keyword,) if isinstance(family.keyword, str) else family.keyword
-    if (not any(word in words for word in keywords) or any(word in words for word in family.excluded)
-            or family.required and not any(word in words for word in family.required)):
+    if not belongs(words, family) or any(belongs(words, FAMILIES[other]) for other in family.others):
         raise OfferError('Hors famille')
     match = re.fullmatch(family.sku_pattern, str(product.get('sku', '')))
     if not match:
