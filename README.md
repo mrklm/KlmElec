@@ -1,4 +1,4 @@
-# KlmElec — v1.0.2
+# KlmElec — v1.0.3
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 

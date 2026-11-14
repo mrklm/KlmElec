@@ -122,6 +122,34 @@ def test_lot_and_unknown_reference_never_requested(monkeypatch):
     assert 'Référence non prise en charge' in run(handler, items=items)[0]['detail']
 
 
+def test_missing_robots_allows_access_and_is_fetched_once():
+    calls = []
+    def handler(request):
+        calls.append(request.url.path)
+        if request.url.path == '/robots.txt':
+            return httpx.Response(404)
+        ref = '411638' if str(request.url) == CONNECTORS['123elec'].links['411638'].url else '411617'
+        return httpx.Response(200, text=document(ref=ref))
+    items, suppliers = inputs()
+    items.append(dict(items[0], id=2, reference='411638'))
+    offers = run(handler, items=items, suppliers=[suppliers[0]])
+    assert [o['status'] for o in offers] == ['ok', 'ok']
+    assert calls.count('/robots.txt') == 1
+
+
+def test_unreadable_robots_is_not_reported_as_product_error():
+    calls = []
+    def handler(request):
+        calls.append(request.url.path)
+        return httpx.Response(500) if request.url.path == '/robots.txt' else success(request)
+    items, suppliers = inputs()
+    items.append(dict(items[0], id=2, reference='411638'))
+    offers = run(handler, items=items, suppliers=[suppliers[0]])
+    assert all(o['status'] == 'error' for o in offers)
+    assert all(o['detail'] == 'Règles d’accès du site illisibles (HTTP 500)' for o in offers)
+    assert calls == ['/robots.txt']
+
+
 def test_robots_and_stop_after_block():
     calls = []
     def handler(request):

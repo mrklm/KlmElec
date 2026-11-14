@@ -481,8 +481,33 @@ def test_background_comparison_and_history(app, store, monkeypatch):
     window.history.setCurrentIndex(1)
     assert 'prix non revérifiés' in window.report.toPlainText()
     window.vat.setValue(10)
-    assert not window.material_model.offers
+    # Changing VAT recomputes HT without discarding the collected prices.
+    assert window.material_model.offers
+    assert 'Total HT calculé : 21,82' in window.summary.text()
+    assert 'Total TTC : 24,00' in window.summary.text()
     assert len(store.comparisons()) == 1
+    window.close()
+
+
+@pytest.mark.parametrize('answer, archived', [(QMessageBox.No, False), (QMessageBox.Yes, True)])
+def test_remove_supplier_asks_confirmation(app, store, monkeypatch, answer, archived):
+    asked = []
+    original = QMessageBox.question
+
+    def question(parent, title, *args):
+        if title == 'Retirer le fournisseur':
+            asked.append(args[0])
+            return answer
+        return original(parent, title, *args)
+
+    monkeypatch.setattr(QMessageBox, 'question', question)
+    window = MainWindow(store, 'test')
+    before = len(store.suppliers())
+    first = window.supplier_model.rows[0]
+    window.supplier_table.setCurrentIndex(window.supplier_model.index(0, 0))
+    window.remove_supplier()
+    assert len(asked) == 1 and first['name'] in asked[0]
+    assert len(store.suppliers()) == before - archived
     window.close()
 
 

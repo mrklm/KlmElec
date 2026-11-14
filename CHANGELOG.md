@@ -1,5 +1,12 @@
 # Historique
 
+## 1.0.3 — 2026-11-14
+
+- Traite un robots.txt absent (404/410) comme une absence de restriction et ne le redemande plus pour chaque article ; une autre erreur sur ce fichier est signalée comme telle, et non plus comme une fiche produit introuvable.
+- Conserve les prix relevés et les choix d’offres lors d’un changement de TVA : seul le HT est recalculé.
+- Demande confirmation avant de retirer un fournisseur.
+- Valide ces changements avec 106 tests automatisés.
+
 ## 1.0.2 — 2026-11-13
 
 - Configure les fiches IKEPE IKE821023 (tableau nu 3 rangées) et IKE821053 (porte blanche) chez 123 Elec. Accepte la marque historique « À confirmer » uniquement pour les références IKE explicitement vérifiées, sans modifier les listes existantes.

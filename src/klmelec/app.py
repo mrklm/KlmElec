@@ -636,7 +636,9 @@ class MainWindow(QMainWindow):
         value = str(self.vat.value())
         self.store.save_vat(value)
         self.material_model.vat = value
-        self.invalidate_comparison()
+        # Seul le HT dépend de la TVA : conserver les prix relevés et les choix d'offres.
+        self.material_model.refresh_prices()
+        self.update_summary()
 
     def load_history(self):
         self.history.blockSignals(True)
@@ -877,7 +879,14 @@ class MainWindow(QMainWindow):
     def remove_supplier(self):
         index = self.supplier_table.currentIndex()
         if index.isValid():
-            self.store.archive_supplier(self.supplier_model.rows[index.row()]['id'])
+            supplier = self.supplier_model.rows[index.row()]
+            if QMessageBox.question(
+                    self, 'Retirer le fournisseur',
+                    f"Retirer « {supplier['name']} » de la liste des fournisseurs ?\n"
+                    'Les prix relevés de la session en cours seront effacés.',
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+                return
+            self.store.archive_supplier(supplier['id'])
             self.supplier_model.refresh()
             self.invalidate_comparison()
 

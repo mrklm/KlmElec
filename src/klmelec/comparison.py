@@ -67,6 +67,18 @@ def read_html(client, url):
         return data.decode('utf-8', errors='replace')
 
 
+def robots_policy(client, host):
+    policy = RobotFileParser()
+    try:
+        policy.parse(read_html(client, f'https://{host}/robots.txt').splitlines())
+    except httpx.HTTPStatusError as exc:
+        # RFC 9309 : un fichier absent (404/410) n'impose aucune restriction.
+        if exc.response.status_code not in (404, 410):
+            raise
+        policy.parse([])
+    return policy
+
+
 def compare(items, suppliers, previous=(), progress=lambda text: None,
             cancelled=lambda: False, client=None, pause=time.sleep):
     """Return one explicit result per item and enabled supplier, including failures."""
@@ -104,10 +116,18 @@ def compare(items, suppliers, previous=(), progress=lambda text: None,
                     if connector.host in blocked:
                         raise OfferError('Site suspendu après un refus ou une limitation d’accès')
                     if connector.host not in robots:
-                        policy = RobotFileParser()
-                        policy.parse(read_html(client, f'https://{connector.host}/robots.txt').splitlines())
-                        robots[connector.host] = policy
+                        try:
+                            robots[connector.host] = robots_policy(client, connector.host)
+                        except httpx.HTTPStatusError as exc:
+                            # Erreur mémorisée : ne pas la présenter comme celle de la fiche
+                            # ni redemander robots.txt pour chaque article.
+                            code = exc.response.status_code
+                            if code in (403, 429):
+                                blocked.add(connector.host)
+                            robots[connector.host] = f'Règles d’accès du site illisibles (HTTP {code})'
                         pause(1)
+                    if isinstance(robots[connector.host], str):
+                        raise OfferError(robots[connector.host])
                     if not robots[connector.host].can_fetch('KlmElec', link.url):
                         raise OfferError('Consultation exclue par les règles du site')
                     if cancelled():
