@@ -1,4 +1,4 @@
-# KlmElec — v1.3.0
+# KlmElec — v1.30.1
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
@@ -18,12 +18,12 @@ La version est centralisée dans `VERSION` : paquet Python, titre de fenêtre et
 
 ## Fonctions
 
-- **Matériel** : catalogue de 28 articles extensible automatiquement, recherche par désignation ou référence, ou bouton **Familles** (domaine → famille → sous-famille / calibre → article, ajout en un clic ; disjoncteurs et différentiels détaillés par variantes, appareillage par fonction, composition et taille de plaque), quantités et lieux par exemplaire.
+- **Matériel** : catalogue de 28 articles extensible automatiquement, recherche par désignation ou référence, ou bouton **Familles** (domaine → famille → sous-famille / calibre → article, ajout en un clic ; disjoncteurs et différentiels détaillés par variantes, appareillage par fonction, composition, taille de plaque ou de cadre et finition ; domaines Protection, Commande, Mesure, Répartition, Tableaux, GTL, Communication, Domotique, Sécurité et Appareillage), quantités et lieux par exemplaire.
 - **Prix** : comparaison TTC, choix manuel du fournisseur par article et total selon les quantités, hors livraison. La comparaison se lance automatiquement à chaque ajout d’article et peut aussi être périodique.
 - **Calcul électrique** : rangées d’un logement monophasé, affectation des circuits, usages et caractéristiques des différentiels. Vérifications amont/aval, calibre, nombre de circuits, type et sensibilité ; données manquantes signalées.
 - **Paramètres** : fournisseurs, historique, seuils de livraison offerte saisis manuellement, TVA, colonne HT optionnelle et 16 thèmes (cases à cocher contourées à la couleur du thème).
 - **Listes** : enregistrement JSON et accès aux fichiers depuis le raccourci disquette.
-- **Catalogue** : recherche automatique d’une famille de produits chez les deux fournisseurs (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers de répartition, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés, coffrets et modules de communication, interrupteurs crépusculaires, compteurs d’énergie, éclairage de sécurité Sati, appareillage Dooxie, Mosaic, Céliane, Plexo, Niloé et saillie Oteo Legrand, domotique Yokis pour l’instant). Chaque fiche est contrôlée avant ajout ; les lots et accessoires sont écartés.
+- **Catalogue** : recherche automatique d’une famille de produits chez les deux fournisseurs (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers de répartition, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés, coffrets et modules de communication, interrupteurs crépusculaires, compteurs d’énergie, éclairage de sécurité Sati, appareillage Dooxie, Mosaic, Céliane, Plexo, Niloé et saillie Oteo Legrand, domotique Yokis pour l’instant). Chaque fiche est contrôlée avant ajout ; les lots et accessoires sont écartés. Yokis n’est recherché que chez 123 Elec ; une fiche dont l’EAN diffère d’un fournisseur à l’autre est écartée.
 
 ## Conserver ses listes
 

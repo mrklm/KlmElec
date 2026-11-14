@@ -1,5 +1,9 @@
 # Historique
 
+## 1.30.1 — 2026-11-14
+
+- Met à jour le README : numéro de version du titre (resté à 1.3.0), domaines du menu « Familles », recherche Yokis limitée à 123 Elec et rejet des fiches à EAN différent.
+
 ## 1.30.0 — 2026-11-14
 
 - Ajoute la famille « Éclairage de sécurité Legrand (BAES Sati) » à Paramètres → Catalogue : BAES d’évacuation et d’ambiance, BAES+BAEH, télécommande ; les plaques Céliane « satiné » sont écartées.
