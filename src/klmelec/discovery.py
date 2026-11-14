@@ -47,7 +47,7 @@ FAMILIES = {
         elecdistrib_categories=('https://www.elecdistrib.fr/132-disjoncteurs-legrand',)),
     # « Interrupteur différentiel » écarte les disjoncteurs différentiels et d'abonné.
     'differentiels-legrand': Family(
-        label='Interrupteurs différentiels Legrand', brand='Legrand', keyword='interrupteur differentiel',
+        label='Interrupteurs différentiels Legrand', brand='Legrand', keyword=('interrupteur differentiel', 'inter diff'),
         excluded=(), sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', 'differentiel'),
         elecdistrib_categories=('https://www.elecdistrib.fr/135-interrupteurs-differentiels-legrand',)),
     # La catégorie Elec Distrib contient aussi des télévariateurs : écartés par le mot-clé.
@@ -146,6 +146,65 @@ FAMILIES = {
         excluded=('pour interrupteur',),  # cellules de rechange
         sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', 'crepusculaire'),
         elecdistrib_categories=('https://www.elecdistrib.fr/142-horloge-modulaire-legrand',)),
+    # Appareillage : une famille par gamme ; références à 6 chiffres, parfois suivies d'une lettre (600266A),
+    # ou nouvelle gamme Céliane (CB0001, CT0001, CM0051, CP0108).
+    'dooxie-legrand': Family(
+        label='Dooxie Legrand', brand='Legrand', keyword='dooxie', excluded=(),
+        sku_pattern=r'LEG-?(\d{6}[A-Z]?)', elec123_url=('/legrand-', 'dooxie'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/179-mecanismes-dooxie',
+                                'https://www.elecdistrib.fr/180-plaques-de-finition-dooxie-rondes-carrees-accessoires',
+                                'https://www.elecdistrib.fr/207-dooxie-complet')),
+    'mosaic-legrand': Family(
+        label='Mosaic Legrand', brand='Legrand', keyword='mosaic', excluded=(),
+        sku_pattern=r'LEG-?(\d{6}[A-Z]?)', elec123_url=('/legrand-', 'mosaic'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/255-mecanismes-mosaic',
+                                'https://www.elecdistrib.fr/68-mosaic-complet',
+                                'https://www.elecdistrib.fr/69-plaques-de-finition-mosaic',
+                                'https://www.elecdistrib.fr/70-accessoires-supports-mosaic')),
+    'celiane-legrand': Family(
+        label='Céliane Legrand', brand='Legrand', keyword='celiane', excluded=(),
+        sku_pattern=r'LEG-?(\d{6}[A-Z]?|C[A-Z]\d{4})', elec123_url=('/legrand-', 'celiane'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/64-mecanismes-celiane',
+                                'https://www.elecdistrib.fr/65-enjoliveurs-celiane',
+                                'https://www.elecdistrib.fr/66-plaques-de-finition-celiane',
+                                'https://www.elecdistrib.fr/63-celiane-complet',
+                                'https://www.elecdistrib.fr/67-accessoires-supports-celiane')),
+    # Gamme étanche : composable (mécanisme + support + boîtier) ou complet saillie.
+    'plexo-legrand': Family(
+        label='Plexo Legrand (étanche)', brand='Legrand', keyword='plexo', excluded=(),
+        sku_pattern=r'LEG-?(\d{6}[A-Z]?)', elec123_url=('/legrand-', 'plexo'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/256-mecanismes-plexo',
+                                'https://www.elecdistrib.fr/257-supports-et-boitiers-plexo',
+                                'https://www.elecdistrib.fr/258-plexo-complet')),
+    'niloe-legrand': Family(
+        label='Niloé Legrand', brand='Legrand', keyword='niloe', excluded=(),
+        sku_pattern=r'LEG-?(\d{6}[A-Z]?)', elec123_url=('/legrand-', 'niloe'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/60-niloe-complet',
+                                'https://www.elecdistrib.fr/61-plaques-de-finition-niloe',
+                                'https://www.elecdistrib.fr/62-mecanismes-niloe')),
+    # Appareillage saillie (Oteo, cadres DLP) : « saillie » figure aussi dans les autres gammes,
+    # écartées par « others », et dans des produits étanches ou de recharge.
+    'saillie-legrand': Family(
+        label='Appareillage saillie Legrand (Oteo)', brand='Legrand', keyword=('oteo', 'saillie'),
+        excluded=('green', 'etanche', 'differentiel', 'coffret', 'tableau'),
+        others=('dooxie-legrand', 'mosaic-legrand', 'celiane-legrand', 'plexo-legrand', 'niloe-legrand'),
+        sku_pattern=r'LEG-?(\d{6}[A-Z]?)', elec123_url=('/legrand-', 'saillie'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/52-appareillage-saillie-legrand',)),
+    'compteurs-legrand': Family(
+        label='Compteurs d’énergie Legrand (EMDX³, Écocompteur)', brand='Legrand', keyword=('emdx', 'ecocompteur'),
+        excluded=('platine', 'pour compteur'), sku_pattern=r'LEG-?(\d{6})',
+        elec123_url=('/legrand-', ('compteur', 'emdx')),
+        elecdistrib_categories=('https://www.elecdistrib.fr/144-ecocompteur-legrand',)),
+    # « sati » seul trouverait les plaques Céliane « satiné » : repérage par BAES / BAEH.
+    'securite-legrand': Family(
+        label='Éclairage de sécurité Legrand (BAES Sati)', brand='Legrand', keyword=('baes', 'baeh', 'bloc autonome'),
+        excluded=(), sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', 'baes'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/214-baes',)),
+    # Yokis : 123 Elec seulement. Elec Distrib n'en vend que 3, sans marque dans les données produit
+    # et sous une autre référence (LUM-5454062 au lieu de MTV500M).
+    'yokis': Family(
+        label='Domotique Yokis', brand='Yokis', keyword='yokis', excluded=(),
+        sku_pattern=r'YOK-?([A-Z0-9][A-Z0-9-]*)', elec123_url=('/yokis-',), elecdistrib_categories=()),
 }
 
 PACK = re.compile(r'\b(?:lot|pack|bo[iî]te|sachet)\s+de\s+(\d+)\b', re.I)

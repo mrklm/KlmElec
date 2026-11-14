@@ -23,6 +23,7 @@ from . import __version__
 from .shipping_ui import ShippingPanel
 from .electrical_ui import ElectricalPage
 from .catalog_ui import CatalogPage
+from .family_menu import FamilyButton
 from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
 from .suppliers import CONNECTORS
@@ -149,18 +150,24 @@ class MainWindow(QMainWindow):
         heading.setStyleSheet('font-size: 22px; font-weight: 600;')
         layout.addWidget(heading)
         controls = QHBoxLayout()
+        self.family_button = FamilyButton()
+        self.family_button.chosen.connect(self.add_product)
+        controls.addWidget(self.family_button)
+        controls.addStretch(1)
         self.search = QComboBox()
         self.search.setEditable(True)
         self.search.setInsertPolicy(QComboBox.NoInsert)
         self.search.lineEdit().setPlaceholderText('Exemple : disj 16, legrand, 406774…')
-        self.search.setMinimumWidth(420)
+        self.search.setMinimumWidth(260)
+        self.search.setMaximumWidth(380)
         self.suggestions = QStringListModel(self)
         self.reload_catalog()
         self.completer = QCompleter(self.suggestions, self)
         self.completer.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
         self.search.setCompleter(self.completer)
         self.search.lineEdit().textEdited.connect(self.filter_products)
-        controls.addWidget(self.search, 1)
+        controls.addWidget(self.search, 2)
+        controls.addStretch(1)
         controls.addWidget(QLabel('Quantité'))
         self.quantity = QSpinBox()
         self.quantity.setRange(1, 99999)
@@ -252,7 +259,7 @@ class MainWindow(QMainWindow):
 
         suppliers = QWidget()
         supplier_layout = QVBoxLayout(suppliers)
-        supplier_note = QLabel('123 Elec et Elec Distrib : 12 références Legrand configurées (disjoncteurs, différentiels, peignes 404926 / 405000 / 405001 et télérupteur 412408).\n123 Elec : également les quatre références Wago 2106, le tableau IKE821023 et la porte IKE821053. IKE824302 : lot de 5 exclu du calcul unitaire.\nParamètres → Catalogue ajoute automatiquement d’autres références (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés, coffrets et modules de communication, interrupteurs crépusculaires Legrand).\nUn fournisseur ajouté nécessite un connecteur compatible. Les lots sont exclus du minimum unitaire.')
+        supplier_note = QLabel('123 Elec et Elec Distrib : 12 références Legrand configurées (disjoncteurs, différentiels, peignes 404926 / 405000 / 405001 et télérupteur 412408).\n123 Elec : également les quatre références Wago 2106, le tableau IKE821023 et la porte IKE821053. IKE824302 : lot de 5 exclu du calcul unitaire.\nParamètres → Catalogue ajoute automatiquement d’autres références (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés, coffrets et modules de communication, interrupteurs crépusculaires, compteurs d’énergie, éclairage de sécurité Sati, appareillage Dooxie, Mosaic, Céliane, Plexo, Niloé et saillie Oteo Legrand, domotique Yokis).\nUn fournisseur ajouté nécessite un connecteur compatible. Les lots sont exclus du minimum unitaire.')
         supplier_note.setWordWrap(True)
         supplier_layout.addWidget(supplier_note)
         self.supplier_model = SupplierModel(store)
@@ -427,6 +434,11 @@ class MainWindow(QMainWindow):
                 Les mots peuvent être saisis dans n’importe quel ordre, par exemple « disj 16 ».</li>
                 <li>Sélectionnez l’article, indiquez la quantité et éventuellement le lieu,
                 puis cliquez sur <b>Ajouter</b>. Les ajouts d’une même référence sont regroupés.</li>
+                <li>Vous pouvez aussi survoler le bouton <b>Familles</b> : domaine, famille, puis sous-famille
+                et calibre. Les disjoncteurs et différentiels affichent leurs variantes (pôles, courbe, pouvoir de coupure,
+                raccordement ; type et sensibilité). L’appareillage est classé par gamme, fonction, puis mécanisme,
+                enjoliveur ou complet ; les plaques par nombre de postes ou de modules. Cliquez sur un article pour
+                l’ajouter directement, avec la quantité et le lieu choisis.</li>
                 <li>Double-cliquez sur une quantité pour la modifier.
                 Une diminution retire les derniers exemplaires.</li>
                 <li>Pour retirer un article ou un exemplaire, sélectionnez sa ligne
@@ -499,7 +511,7 @@ class MainWindow(QMainWindow):
         tabs.tabBar().setAccessibleTabName(help_index, 'Aide')
         self.reload_places()
         self.tabs = tabs
-        self.busy_widgets = [self.search, self.quantity, add, self.remove,
+        self.busy_widgets = [self.search, self.family_button, self.quantity, add, self.remove,
                              self.material_table, suppliers, self.vat, self.force_refresh,
                              self.compare_button, self.add_place, locations, self.load_list_button, self.list_files]
         self.load_history()
@@ -825,6 +837,7 @@ class MainWindow(QMainWindow):
         self.search.setCurrentIndex(-1)
         self.search.setEditText(current)
         self.suggestions.setStringList(list(self.labels))
+        self.family_button.set_products(self.products)
 
     def filter_products(self, query):
         self.suggestions.setStringList([label for label in self.labels if matches(query, label)])
@@ -878,6 +891,9 @@ class MainWindow(QMainWindow):
         if product_id is None:
             QMessageBox.information(self, 'Choisissez un article', 'Veuillez sélectionner un article proposé avant de l’ajouter.')
             return
+        self.add_product(product_id)
+
+    def add_product(self, product_id):
         try:
             self.store.add_item(product_id, self.quantity.value(), self.add_place.currentData())
         except ValueError as exc:

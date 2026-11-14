@@ -638,3 +638,87 @@ def test_twilight_switch_family_skips_spare_cells():
         result = discover('crepusculaires-legrand', client=client, pause=lambda _: None)
     assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', '412623')]
     assert [reason for *_, reason in result.rejected] == ['Hors famille', 'Hors famille']
+
+
+def test_yokis_family_reads_commercial_reference_on_123elec_only():
+    sitemap = 'https://www.123elec.com/media/sitemap/sitemap.xml'
+    slugs = {
+        'yokis-micro-module-telerupteur-encastre.html':
+            ('YOKMTR500E', '3760054540507', 'YOKIS Télérupteur 2.2A 500VA micro-module encastré - MTR500E', 'YOKIS'),
+        'yokis-up-kit-radio-va-et-vient-1-telerupteur-et-2-emetteurs-radio-kitvv-up.html':
+            ('YOK-KITVV-UP', '3760248204604', 'YOKIS UP Kit radio va et vient 1 télérupteur et 2 émetteurs radio - KITVV-UP', 'YOKIS'),
+        'legrand-telerupteur-16a.html': ('LEG412408', '3245064124089', 'LEGRAND Télérupteur 16A - 412408'),
+    }
+    pages = {sitemap: '<urlset>' + ''.join(f'<url><loc>{E123}{slug}</loc></url>' for slug in slugs) + '</urlset>'}
+    pages.update({E123 + slug: page(*data) for slug, data in slugs.items()})
+    requested = []
+
+    def handler(request):
+        requested.append(request.url.host)
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = discover('yokis', client=client, pause=lambda _: None)
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', 'MTR500E'), ('123elec', 'KITVV-UP')]
+    assert result.links[0][3].brand == 'Yokis'
+    assert 'www.elecdistrib.fr' not in requested
+
+
+def test_energy_meter_family_skips_meter_mounting_plates():
+    sitemap = 'https://www.123elec.com/media/sitemap/sitemap.xml'
+    category = 'https://www.elecdistrib.fr/144-ecocompteur-legrand'
+    slugs = {
+        'legrand-emdx-compteur-d-energie-45a-monophase-certifie-mid-412069.html':
+            ('LEG412069', '3245064120692', 'LEGRAND EMDX³ Compteur d\'énergie 45A monophasé certifié MID - 412069', 'LEGRAND'),
+        'legrand-drivia-platine-pour-compteur-linky-et-cbe-et-ou-disjoncteur-de-branchement-401182.html':
+            ('LEG401182', '3245064011822', 'LEGRAND Drivia Platine pour compteur Linky et CBE et/ou disjoncteur de branchement - 401182'),
+    }
+    pages = {sitemap: '<urlset>' + ''.join(f'<url><loc>{E123}{slug}</loc></url>' for slug in slugs) + '</urlset>',
+             category: f'<a href="{ED}1-ecocompteur-modulaire-ip-legrand-ref-412000-3245064120005.html">x</a>',
+             ED + '1-ecocompteur-modulaire-ip-legrand-ref-412000-3245064120005.html':
+                 page('LEG-412000', '3245064120005', 'Ecocompteur modulaire IP pour mesure consommation 6 postes Legrand Réf. 412000')}
+    pages.update({E123 + slug: page(*data) for slug, data in slugs.items()})
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = discover('compteurs-legrand', client=client, pause=lambda _: None)
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', '412069'), ('elecdistrib', '412000')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille']
+
+
+def test_emergency_lighting_family_ignores_satin_plates():
+    sitemap = 'https://www.123elec.com/media/sitemap/sitemap.xml'
+    category = 'https://www.elecdistrib.fr/214-baes'
+    slugs = {
+        'legrand-baes-d-evacuation-sati-connecte-45lm-a-led-062525.html':
+            ('LEG062525', '3245060625252', 'LEGRAND BAES d\'évacuation SATI connecté 45lm à LED - 062525', 'LEGRAND'),
+        'legrand-telecommande-baes-multifonctions-sati-connecte-062520.html':
+            ('LEG062520', '3245060625207', 'LEGRAND Télécommande BAES multifonctions SATI connecté - 062520', 'LEGRAND'),
+        'legrand-baes-celiane-plaque-simple-acier-satine-cp1801.html':
+            ('LEGCP1801', '3245060718015', 'LEGRAND Céliane Plaque simple acier satiné - CP1801'),
+    }
+    pages = {sitemap: '<urlset>' + ''.join(f'<url><loc>{E123}{slug}</loc></url>' for slug in slugs) + '</urlset>',
+             category: f'<a href="{ED}1-baes-encastre-kickspot-legrand-ref-062524-3245060625245.html">x</a>',
+             ED + '1-baes-encastre-kickspot-legrand-ref-062524-3245060625245.html':
+                 page('LEG-062524', '3245060625245', 'BAES d\'évacuation encastré à LEDs Kickspot SATI connecté Legrand Réf: 062524')}
+    pages.update({E123 + slug: page(*data) for slug, data in slugs.items()})
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = discover('securite-legrand', client=client, pause=lambda _: None)
+    assert [(key, ref) for key, ref, _, _ in result.links] == [
+        ('123elec', '062525'), ('123elec', '062520'), ('elecdistrib', '062524')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille']

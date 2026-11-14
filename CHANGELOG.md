@@ -1,5 +1,66 @@
 # Historique
 
+## 1.30.0 — 2026-11-14
+
+- Ajoute la famille « Éclairage de sécurité Legrand (BAES Sati) » à Paramètres → Catalogue : BAES d’évacuation et d’ambiance, BAES+BAEH, télécommande ; les plaques Céliane « satiné » sont écartées.
+- Ajoute le domaine « Sécurité » au menu « Familles ».
+- Vérifié en conditions réelles le 14/11/2026 : 7 références validées (3 chez 123 Elec, 5 chez Elec Distrib, 062525 chez les deux). La fiche Elec Distrib du 062565 est écartée car son EAN diffère de celui de 123 Elec. Valide ces changements avec 206 tests automatisés.
+
+## 1.29.0 — 2026-11-14
+
+- Ajoute la famille « Compteurs d’énergie Legrand » (EMDX³ et Écocompteur) à Paramètres → Catalogue ; les platines Drivia « pour compteur » sont écartées.
+- Ajoute le domaine « Mesure » au menu « Familles ».
+- Vérifié en conditions réelles le 14/11/2026 : 5 références validées (4 EMDX³ chez 123 Elec, Écocompteur 412000 chez Elec Distrib). Valide ces changements avec 205 tests automatisés.
+
+## 1.28.0 — 2026-11-14
+
+- Ajoute la domotique Yokis à Paramètres → Catalogue (micro-modules filaires, Power radio et UP Zigbee : télérupteurs, minuteries, télévariateurs, volets roulants, émetteurs, télécommandes, kits, passerelle).
+- Recherche limitée à 123 Elec : Elec Distrib ne vend que 3 articles Yokis, sans marque dans les données produit et sous une autre référence.
+- Ajoute le domaine « Domotique » au menu « Familles », découpé par fonction.
+- Vérifié en conditions réelles le 14/11/2026 : 49 références validées (prix, quantité minimale, disponibilité), aucune rejetée. Valide ces changements avec 204 tests automatisés.
+
+## 1.27.0 — 2026-11-14
+
+- Ajoute l’appareillage saillie Legrand (Oteo, cadres pour moulures DLP) à Paramètres → Catalogue ; les articles saillie des gammes Dooxie, Mosaic, Céliane, Plexo et Niloé restent dans leur gamme, les prises Green’up et les articles étanches sont écartés.
+- Ajoute la rubrique « Cadres saillie » au menu « Familles », classée par nombre de postes, dans toutes les gammes.
+- Corrige le classement du cadre Mosaic « 1,5 postes ou 3 modules », qui était rangé dans « 5 postes ».
+- Relevé du 14/11/2026 : 38 références (123 Elec et Elec Distrib, catégorie « Appareillage saillie Legrand ») ; les lots assemblés par le revendeur, sans référence Legrand, sont écartés. Valide ces changements avec 202 tests automatisés.
+
+## 1.26.0 — 2026-11-14
+
+- Ajoute la gamme Niloé Legrand à Paramètres → Catalogue et au menu « Familles » (domaine « Appareillage »).
+- Relevé du 14/11/2026 : gamme en fin de vie, 2 références seulement chez les deux fournisseurs (cadre saillie double 664799, prise TV/R/SAT 664763). Valide ces changements avec 194 tests automatisés.
+
+## 1.25.0 — 2026-11-14
+
+- Ajoute la gamme Plexo Legrand (étanche) à Paramètres → Catalogue : mécanismes à composer, appareils complets en saillie ou encastrés, supports, boîtes de dérivation et coffrets étanches.
+- Ajoute au menu « Familles » les rubriques « Boîtes de dérivation » et « Coffrets étanches », ainsi que la finition « Gris et anthracite ».
+- Relevé du 14/11/2026 : 116 références Plexo identifiées sur 123 Elec et Elec Distrib. Valide ces changements avec 193 tests automatisés.
+
+## 1.24.0 — 2026-11-14
+
+- Ajoute l’appareillage à Paramètres → Catalogue : familles Dooxie, Mosaic et Céliane Legrand (mécanismes, enjoliveurs, plaques, complets, supports), y compris les références de la nouvelle gamme Céliane (CB0001, CP0108…).
+- Ajoute le domaine « Appareillage » au menu « Familles » : gamme, fonction (prises de courant, USB, RJ45/TV/HP, interrupteurs, poussoirs, variateurs, détecteurs, volets roulants, VMC, thermostats…), puis mécanisme, enjoliveur ou complet.
+- Classe les plaques par nombre de postes ou de modules, puis par finition (blanc, noir, métal, bois, verre, couleurs) quand la liste dépasse 20 articles.
+- Affiche dans chaque gamme concernée les accessoires communs (supports « pour Mosaic, Céliane ou Soliroc »).
+- Écarte les lots assemblés par le revendeur, sans référence Legrand.
+- Vérifié en conditions réelles le 14/11/2026 sur 1 000 fiches environ ; recherche Mosaic complète : 97 références (83 fiches 123 Elec, 23 Elec Distrib). Valide ces changements avec 186 tests automatisés.
+
+## 1.23.0 — 2026-11-14
+
+- Détaille les disjoncteurs dans le menu « Familles » : sous-famille (phase + neutre / bipolaires, tétrapolaires / triphasés, différentiels, branchement), puis calibre, puis variantes normalisées (pôles, courbe, pouvoir de coupure, raccordement, gamme DNX³ / DX³).
+- Détaille les interrupteurs différentiels : type (AC, A, Hpi, F, B), puis calibre, puis sensibilité, pôles et raccordement.
+- Lit ces variantes dans la désignation, sans les deviner ; les références d’origine reprennent les caractéristiques relevées sur les fiches fournisseurs.
+- Vérifie que les sous-catégories Elec Distrib (automatiques, à vis) n’apportent pas de fiche supplémentaire. Valide ces changements avec 163 tests automatisés.
+
+## 1.22.0 — 2026-11-14
+
+- Ajoute un bouton « Familles » à gauche de la recherche : il s’ouvre au survol et présente le catalogue par domaine, famille, puis sous-famille et calibre pour les familles de plus de 20 articles ; un clic sur un article l’ajoute à la liste avec la quantité et le lieu choisis.
+- Classe les articles du catalogue avec les règles de la recherche automatique ; les autres sont regroupés par marque dans « Autres articles ».
+- Abrège les désignations dans le menu (marque et référence répétées retirées), désignation complète en info-bulle.
+- Réduit et centre la barre de recherche.
+- Reconnaît « inter diff » comme interrupteur différentiel. Valide ces changements avec 162 tests automatisés.
+
 ## 1.21.0 — 2026-11-14
 
 - Ajoute la famille « Interrupteurs crépusculaires Legrand » à Paramètres → Catalogue ; les cellules de rechange sont écartées.
