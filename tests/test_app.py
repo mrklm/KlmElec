@@ -102,6 +102,8 @@ def test_invalid_supplier(store, url):
 
 def test_window_workflow(app, store, monkeypatch):
     window = MainWindow(store, 'test')
+    comparisons = []
+    monkeypatch.setattr(window, 'start_comparison', lambda **kwargs: comparisons.append(kwargs))
     window.show()
     app.processEvents()
     window.filter_products('disj 16')
@@ -115,6 +117,8 @@ def test_window_workflow(app, store, monkeypatch):
     # Repeated additions now merge automatically.
     window.add_item()
     assert store.items()[0]['quantity'] == 6
+    # Each addition launches the comparison without clicking the button.
+    assert len(comparisons) == 2
     index = window.material_model.index(0, 3)
     assert window.material_model.setData(index, 8, Qt.EditRole)
     assert store.items()[0]['quantity'] == 8
@@ -534,3 +538,38 @@ def test_close_cancels_worker_without_destroying_running_thread(app, store, monk
             break
     assert window.worker is None
     assert not window.isVisible()
+
+
+def test_add_item_without_active_supplier_does_not_compare(app, store, monkeypatch):
+    for supplier in store.suppliers():
+        store.archive_supplier(supplier['id'])
+    window = MainWindow(store, 'test')
+    calls = []
+    monkeypatch.setattr(window, 'start_comparison', lambda **kwargs: calls.append(kwargs))
+    window.search.setCurrentIndex(0)
+    window.add_item()
+    assert store.items() and not calls
+    window.close()
+
+
+def test_standard_buttons_in_french(app):
+    from PySide6.QtCore import QCoreApplication
+    from klmelec.app import install_translations
+    translator = install_translations(app)
+    try:
+        assert translator is not None
+        assert QCoreApplication.translate('QPlatformTheme', '&Yes') == '&Oui'
+        assert QCoreApplication.translate('QPlatformTheme', '&No') == '&Non'
+    finally:
+        app.removeTranslator(translator)
+
+
+def test_checkbox_outline_follows_theme(app):
+    from pathlib import Path
+    from klmelec.themes import THEMES, apply_theme
+    for name in ('[Sombre] Midnight Garage', '[Clair] Matin Brumeux'):
+        apply_theme(app, name)
+        style = app.styleSheet()
+        assert f"border: 2px solid {THEMES[name]['ACCENT']}" in style
+        check = style.split('url("')[1].split('")')[0]
+        assert Path(check).is_file()

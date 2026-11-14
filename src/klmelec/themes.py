@@ -1,5 +1,41 @@
 """Bibliothèque de thèmes Garage et adaptation à Qt."""
-from PySide6.QtGui import QColor, QPalette
+import tempfile
+from pathlib import Path
+
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QColor, QPainter, QPalette, QPen, QPixmap
+
+_check_dir = None
+
+
+def check_mark(color):
+    """Coche PNG de la couleur demandée, pour la feuille de style des cases à cocher."""
+    global _check_dir
+    if _check_dir is None:
+        _check_dir = Path(tempfile.mkdtemp(prefix='klmelec-'))
+    path = _check_dir / f'check-{QColor(color).name()[1:]}.png'
+    if not path.exists():
+        pixmap = QPixmap(32, 32)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(QPen(QColor(color), 4.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        painter.drawPolyline([QPointF(7, 16.5), QPointF(13.5, 23), QPointF(25, 9)])
+        painter.end()
+        pixmap.save(str(path), 'PNG')
+    return path.as_posix()
+
+
+def checkbox_style(colors, check_color):
+    accent, field = colors['ACCENT'], colors['FIELD']
+    muted = QColor(colors['FG'])
+    muted = f'rgba({muted.red()}, {muted.green()}, {muted.blue()}, 110)'
+    return (f'QCheckBox::indicator {{ width: 16px; height: 16px; border: 2px solid {accent};'
+            f' border-radius: 3px; background: {field}; }}'
+            f'QCheckBox::indicator:hover {{ border-width: 3px; }}'
+            f'QCheckBox::indicator:checked {{ background: {accent}; image: url("{check_mark(check_color)}"); }}'
+            f'QCheckBox::indicator:disabled {{ border-color: {muted}; }}'
+            f'QCheckBox::indicator:checked:disabled {{ background: {muted}; }}')
 
 
 THEMES = {
@@ -39,7 +75,10 @@ def apply_theme(app, name):
     # Choose readable selection text independently of the theme's field text.
     luminance = sum(weight * (channel / 12.92 if channel <= .04045 else ((channel + .055) / 1.055) ** 2.4)
                     for weight, channel in zip((.2126, .7152, .0722), accent.getRgbF()[:3]))
-    palette.setColor(QPalette.HighlightedText, QColor('#000000' if luminance > .179 else '#FFFFFF'))
+    contrast = '#000000' if luminance > .179 else '#FFFFFF'
+    palette.setColor(QPalette.HighlightedText, QColor(contrast))
+    # Fusion dessine des cases peu visibles sur les thèmes sombres : contour à la couleur d'accent.
+    app.setStyleSheet(checkbox_style(colors, contrast))
     for role in (QPalette.WindowText, QPalette.Text, QPalette.ButtonText):
         muted = palette.color(role)
         muted.setAlpha(130)

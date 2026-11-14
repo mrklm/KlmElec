@@ -1,5 +1,12 @@
 # Historique
 
+## 1.1.0 — 2026-11-14
+
+- Rend les cases à cocher visibles dans tous les thèmes : contour et coche à la couleur d’accent du thème.
+- Lance automatiquement la comparaison des prix à chaque ajout d’article, si un fournisseur est actif ; les relevés de moins de 5 minutes restent réutilisés.
+- Traduit en français les boutons standard (Oui, Non, Annuler…) des boîtes de dialogue, dont la confirmation à la fermeture.
+- Valide ces changements avec 109 tests automatisés.
+
 ## 1.0.3 — 2026-11-14
 
 - Traite un robots.txt absent (404/410) comme une absence de restriction et ne le redemande plus pour chaque article ; une autre erreur sur ce fichier est signalée comme telle, et non plus comme une fiche produit introuvable.

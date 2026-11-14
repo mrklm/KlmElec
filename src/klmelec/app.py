@@ -7,7 +7,7 @@ from decimal import Decimal
 from importlib.resources import files
 from pathlib import Path
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel, QTimer, QSaveFile, QIODevice, QSize
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, QStandardPaths, QStringListModel, QTimer, QSaveFile, QIODevice, QSize, QTranslator, QLocale, QLibraryInfo
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -436,8 +436,8 @@ class MainWindow(QMainWindow):
             <ul>
                 <li>Gérez les fournisseurs actifs dans <b>Paramètres → Fournisseurs</b>.
                 Un fournisseur ajouté nécessite un connecteur compatible pour récupérer ses prix.</li>
-                <li>Dans <b>Matériel</b>, cliquez sur <b>Comparer les prix</b>.
-                Vous pouvez annuler une recherche en cours.</li>
+                <li>La comparaison se lance automatiquement à chaque ajout d’article.
+                Vous pouvez aussi cliquer sur <b>Comparer les prix</b> et annuler une recherche en cours.</li>
                 <li>Les colonnes affichent les prix unitaires TTC. Par défaut, le liseré rouge indique
                 le minimum confirmé, égalités incluses. Cliquez sur un autre prix valide pour retenir
                 cette offre, même plus chère : le cadre rouge suit votre choix.</li>
@@ -849,6 +849,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, 'Quantité incorrecte', str(exc))
             return
         self.material_model.refresh()
+        # Comparaison automatique ; les relevés de moins de 5 minutes sont réutilisés.
+        if self.material_model.suppliers:
+            self.start_comparison()
 
     def remove_item(self):
         index = self.material_table.currentIndex()
@@ -891,8 +894,19 @@ class MainWindow(QMainWindow):
             self.invalidate_comparison()
 
 
+def install_translations(app):
+    """Boutons standard de Qt (Oui, Non, Annuler…) et boîtes de fichiers en français."""
+    translator = QTranslator(app)
+    if translator.load(QLocale(QLocale.French, QLocale.France), 'qtbase', '_',
+                       QLibraryInfo.path(QLibraryInfo.TranslationsPath)):
+        app.installTranslator(translator)
+        return translator
+    return None
+
+
 def main():
     app = QApplication(sys.argv)
+    install_translations(app)
     app.setApplicationName('KlmElec')
     app.setOrganizationName('KlmElec')
     pixmap = QPixmap()

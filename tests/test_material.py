@@ -112,8 +112,9 @@ def test_supplier_columns_ties_failures_and_age(store, app):
     assert model.columnCount() == 9
 
 
-def test_locations_ui_and_tree_expansion(store, app):
+def test_locations_ui_and_tree_expansion(store, app, monkeypatch):
     window = MainWindow(store, 'test')
+    monkeypatch.setattr(window, 'start_comparison', lambda **kwargs: None)
     window.place_name.setText('Chambre #2')
     window.add_location()
     new_id = window.add_place.currentData()

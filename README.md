@@ -1,4 +1,4 @@
-# KlmElec — v1.0.3
+# KlmElec — v1.1.0
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
@@ -19,9 +19,9 @@ La version est centralisée dans `VERSION` : paquet Python, titre de fenêtre et
 ## Fonctions
 
 - **Matériel** : catalogue de 28 articles, recherche par désignation ou référence, quantités et lieux par exemplaire.
-- **Prix** : comparaison TTC, choix manuel du fournisseur par article et total selon les quantités, hors livraison. Les comparaisons peuvent être périodiques.
+- **Prix** : comparaison TTC, choix manuel du fournisseur par article et total selon les quantités, hors livraison. La comparaison se lance automatiquement à chaque ajout d’article et peut aussi être périodique.
 - **Calcul électrique** : rangées d’un logement monophasé, affectation des circuits, usages et caractéristiques des différentiels. Vérifications amont/aval, calibre, nombre de circuits, type et sensibilité ; données manquantes signalées.
-- **Paramètres** : fournisseurs, historique, seuils de livraison offerte saisis manuellement, TVA, colonne HT optionnelle et 16 thèmes.
+- **Paramètres** : fournisseurs, historique, seuils de livraison offerte saisis manuellement, TVA, colonne HT optionnelle et 16 thèmes (cases à cocher contourées à la couleur du thème).
 - **Listes** : enregistrement JSON et accès aux fichiers depuis le raccourci disquette.
 
 ## Conserver ses listes
