@@ -1,5 +1,103 @@
 # Historique
 
+## 1.18.0 — 2026-11-14
+
+- Ajoute la famille « Tableaux pré-équipés Legrand » (pré-équipés ou pré-câblés) à Paramètres → Catalogue ; les prises précâblées et les portes de la catégorie sont écartées.
+- Vérifié en conditions réelles le 14/11/2026 : 17 nouvelles références (4 fiches 123 Elec, 13 Elec Distrib, aucune en commun). Valide ces changements avec 156 tests automatisés.
+
+## 1.17.0 — 2026-11-14
+
+- Ajoute les familles « Portes Drivia Legrand » (blanches et transparentes) et « Rehausses Drivia Legrand » à Paramètres → Catalogue ; les portes de bacs, de platines et XL³ sont écartées.
+- Vérifié en conditions réelles le 14/11/2026 : 16 portes (8 fiches 123 Elec, 14 Elec Distrib, 2 refusées faute de quantité minimale confirmée) et 8 rehausses (123 Elec uniquement). Valide ces changements avec 155 tests automatisés.
+
+## 1.16.0 — 2026-11-14
+
+- Ajoute la famille « Coffrets Drivia Legrand (tableaux nus) » à Paramètres → Catalogue : 13 et 18 modules, 1 à 4 rangées.
+- Écarte les portes, rehausses, serrures, platines, habillages, tableaux pré-équipés ou pré-câblés et coffrets de communication, ainsi que les GTL, peignes et borniers de la gamme Drivia.
+- Vérifié en conditions réelles le 14/11/2026 : 8 nouvelles références (8 fiches 123 Elec, 7 Elec Distrib), 64 autres fiches Drivia écartées. Valide ces changements avec 153 tests automatisés.
+
+## 1.15.0 — 2026-11-14
+
+- Ajoute la famille « Accessoires GTL Legrand » (embouts, cornets, jonctions sol/plafond), complémentaire de la famille GTL : chaque fiche relève de l’une ou de l’autre.
+- Permet d’exiger, en plus du mot-clé, l’un de plusieurs mots dans la désignation d’une famille.
+- Vérifié en conditions réelles le 14/11/2026 : 3 nouvelles références (2 fiches 123 Elec, 2 Elec Distrib), les goulottes renvoyées à la famille GTL. Valide ces changements avec 152 tests automatisés.
+
+## 1.14.0 — 2026-11-14
+
+- Ajoute la famille « GTL Legrand (gaines techniques de logement) » à Paramètres → Catalogue : goulottes GTL complètes ; embouts, cornets et jonctions sol/plafond sont écartés.
+- Vérifié en conditions réelles le 14/11/2026 : 3 nouvelles références (3 fiches 123 Elec, 2 Elec Distrib), 5 accessoires écartés. Valide ces changements avec 151 tests automatisés.
+
+## 1.13.0 — 2026-11-14
+
+- Ajoute la famille « Borniers de répartition Legrand » (phase, neutre, terre, 3P+N), distincte des répartiteurs ; les supports pour borniers sont écartés.
+- Vérifié en conditions réelles le 14/11/2026 : 10 nouvelles références (7 fiches 123 Elec, 5 Elec Distrib), 1 support écarté. Valide ces changements avec 150 tests automatisés.
+
+## 1.12.0 — 2026-11-14
+
+- Ajoute la famille « Répartiteurs Legrand » à Paramètres → Catalogue (catégorie accessoires modulaires chez Elec Distrib, triée par la désignation) ; les borniers de répartition ne sont pas retenus.
+- Vérifié en conditions réelles le 14/11/2026 : 11 nouvelles références (2 fiches 123 Elec, 11 Elec Distrib), 66 autres articles de la catégorie écartés. Valide ces changements avec 149 tests automatisés.
+
+## 1.11.0 — 2026-11-14
+
+- Ajoute la famille « Horloges modulaires Legrand » à Paramètres → Catalogue : « interrupteur horaire » ou « horloge » dans la désignation ; minuteries, sonneries, relais et interrupteurs crépusculaires de la catégorie sont écartés.
+- Permet plusieurs mots-clés par famille, dans la désignation comme dans l’adresse du plan de site.
+- Vérifié en conditions réelles le 14/11/2026 : 10 nouvelles références (6 fiches 123 Elec, 7 Elec Distrib), 5 fiches écartées. Valide ces changements avec 148 tests automatisés.
+
+## 1.10.0 — 2026-11-14
+
+- Ajoute la famille « Interrupteurs-sectionneurs Legrand » à Paramètres → Catalogue (catégorie accessoires modulaires chez Elec Distrib, triée par la désignation).
+- Vérifié en conditions réelles le 14/11/2026 : 7 nouvelles références (4 fiches 123 Elec, 6 Elec Distrib), 71 autres articles de la catégorie écartés. Valide ces changements avec 147 tests automatisés.
+
+## 1.9.0 — 2026-11-14
+
+- Ajoute la famille « Parafoudres Legrand » à Paramètres → Catalogue ; les cassettes de rechange sont écartées.
+- Vérifié en conditions réelles le 14/11/2026 : 4 nouvelles références (4 fiches 123 Elec, 1 Elec Distrib), 1 fiche écartée. Valide ces changements avec 146 tests automatisés.
+
+## 1.8.0 — 2026-11-14
+
+- Ajoute la famille « Contacteurs Legrand » à Paramètres → Catalogue (plan de site 123 Elec, catégorie Elec Distrib).
+- Vérifié en conditions réelles le 14/11/2026 : 13 nouvelles références (12 fiches 123 Elec, 5 Elec Distrib), aucune fiche écartée. Valide ces changements avec 145 tests automatisés.
+
+## 1.7.0 — 2026-11-14
+
+- Ajoute la famille « Peignes d’alimentation Legrand » à Paramètres → Catalogue (catégorie accessoires modulaires chez Elec Distrib, triée par la désignation).
+- Écarte les accessoires pour peignes : modules d’alimentation ou de raccordement, isolants, dispositifs de raccordement.
+- Vérifié en conditions réelles le 14/11/2026 : 8 nouvelles références (5 fiches 123 Elec, 6 Elec Distrib), 7 accessoires pour peignes et 65 autres articles écartés. Valide ces changements avec 144 tests automatisés.
+
+## 1.6.0 — 2026-11-14
+
+- Ajoute la famille « Télérupteurs Legrand » à Paramètres → Catalogue ; les télévariateurs et relais variateurs de la même catégorie sont écartés.
+- Vérifié en conditions réelles le 14/11/2026 : 6 nouvelles références (5 fiches 123 Elec, 4 Elec Distrib), 3 fiches écartées. Valide ces changements avec 143 tests automatisés.
+
+## 1.5.0 — 2026-11-14
+
+- Pré-remplit le différentiel d’une rangée (calibre, type, sensibilité) à partir d’un interrupteur différentiel Legrand monophasé de la liste ; les valeurs restent modifiables.
+- Laisse « À préciser » ce que la désignation n’indique pas et le signale ; les quatre références d’origine sont reconnues d’office.
+- Vérifié sur les 40 interrupteurs différentiels trouvés le 14/11/2026 : 20 complets, 5 partiels, 15 tétrapolaires écartés. Valide ces changements avec 142 tests automatisés.
+
+## 1.4.0 — 2026-11-14
+
+- Ajoute la famille « Interrupteurs différentiels Legrand » à Paramètres → Catalogue (plan de site 123 Elec, catégorie Elec Distrib), avec les mêmes contrôles que les disjoncteurs.
+- Écarte de cette famille les disjoncteurs différentiels, disjoncteurs d’abonné et prises qui citent un différentiel.
+- Compare les désignations sans tenir compte des accents.
+- Vérifié en conditions réelles le 14/11/2026 : 37 nouvelles références (27 fiches 123 Elec, 28 Elec Distrib), 12 fiches écartées (hors famille ou autre marque). Valide ces changements avec 132 tests automatisés.
+
+## 1.3.0 — 2026-11-14
+
+- Étend le calcul électrique aux disjoncteurs Legrand reconnus d’après leur désignation : phase + neutre ou bipolaires, calibre et courbe lus dans le libellé. Les cinq références d’origine restent reconnues d’office.
+- Affiche la courbe dans l’onglet et signale les courbes D ou non indiquées comme à vérifier.
+- Indique les disjoncteurs non évalués et leur motif : différentiels, branchement, triphasés, pôles ou calibre non identifiés.
+- Écarte de la recherche du catalogue les tableaux pré-câblés, cordons et prises dont la désignation cite des disjoncteurs.
+- Vérifié sur les 78 disjoncteurs Legrand du catalogue après recherche : 34 évalués, 44 écartés avec motif. Valide ces changements avec 131 tests automatisés.
+
+## 1.2.0 — 2026-11-14
+
+- Ajoute Paramètres → Catalogue : recherche automatique des disjoncteurs Legrand chez 123 Elec (plan de site) et Elec Distrib (pages de catégorie), robots.txt respecté et une requête par seconde.
+- Ouvre et contrôle chaque fiche (marque, référence, EAN, titre, offre TTC) avant de l’ajouter ; écarte les lots, les accessoires et les EAN discordants entre fournisseurs.
+- Conserve les fiches trouvées dans la base locale et les utilise pour la comparaison des prix ; les fiches configurées dans le code restent prioritaires et les articles existants ne sont pas modifiés.
+- Vérifié en conditions réelles le 14/11/2026 : 80 nouvelles références (48 fiches 123 Elec, 54 Elec Distrib), prix relevés sur un échantillon.
+- Accélère les tests en détruisant les fenêtres entre deux tests. Valide ces changements avec 114 tests automatisés.
+
 ## 1.1.0 — 2026-11-14
 
 - Rend les cases à cocher visibles dans tous les thèmes : contour et coche à la couleur d’accent du thème.

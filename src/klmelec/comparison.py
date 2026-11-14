@@ -55,14 +55,14 @@ def cache_lookup(previous, supplier, item, url):
     return None
 
 
-def read_html(client, url):
+def read_html(client, url, max_bytes=MAX_BYTES):
     # No automatic redirect: do not silently follow a changed product or access challenge.
     with client.stream('GET', url) as response:
         response.raise_for_status()
         data = bytearray()
         for chunk in response.iter_bytes():
             data.extend(chunk)
-            if len(data) > MAX_BYTES:
+            if len(data) > max_bytes:
                 raise OfferError('Réponse trop volumineuse')
         return data.decode('utf-8', errors='replace')
 
@@ -80,19 +80,24 @@ def robots_policy(client, host):
 
 
 def compare(items, suppliers, previous=(), progress=lambda text: None,
-            cancelled=lambda: False, client=None, pause=time.sleep):
-    """Return one explicit result per item and enabled supplier, including failures."""
+            cancelled=lambda: False, client=None, pause=time.sleep, links=None):
+    """Return one explicit result per item and enabled supplier, including failures.
+
+    `links` : fiches découvertes automatiquement, {connecteur: {référence: ProductLink}} ;
+    les fiches configurées dans le code restent prioritaires."""
+    links = links or {}
     if client is None:
         with httpx.Client(timeout=15, follow_redirects=False,
                           headers={'User-Agent': f'KlmElec/{__version__} (comparaison personnelle)'}) as owned:
-            return compare(items, suppliers, previous, progress, cancelled, owned, pause)
+            return compare(items, suppliers, previous, progress, cancelled, owned, pause, links)
     results, robots, blocked = [], {}, set()
     for item in items:
         for supplier in suppliers:
             if not supplier['active']:
                 continue
             connector = CONNECTORS.get(supplier['connector'])
-            link = connector.links.get(item['reference']) if connector else None
+            link = (connector.links.get(item['reference'])
+                    or links.get(supplier['connector'], {}).get(item['reference'])) if connector else None
             if link and item['brand'].casefold() not in {b.casefold() for b in (link.brand, *link.catalog_aliases)}:
                 link = None
             result = dict(product_id=item['id'], reference=item['reference'], quantity=item['quantity'],

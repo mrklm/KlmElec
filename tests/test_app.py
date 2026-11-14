@@ -140,7 +140,7 @@ def test_settings_sections_and_theme_persistence(app, tmp_path):
     window.show()
     assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique', '?']
     assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
-        'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison']
+        'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison', 'Catalogue']
     assert window.theme_selector.currentText() == DEFAULT_THEME
     assert window.theme_selector.count() == 16
     assert not window.persistent_themes.isChecked()
@@ -443,7 +443,7 @@ def test_background_comparison_and_history(app, store, monkeypatch):
     from klmelec import comparison_ui
     entered, release = Event(), Event()
 
-    def fake_compare(items, suppliers, previous, progress, cancelled):
+    def fake_compare(items, suppliers, previous, progress, cancelled, **kwargs):
         entered.set()
         while not release.is_set() and not cancelled():
             time.sleep(.005)
@@ -520,7 +520,7 @@ def test_close_cancels_worker_without_destroying_running_thread(app, store, monk
     from PySide6.QtTest import QTest
     from klmelec import comparison_ui
 
-    def wait_for_cancel(items, suppliers, previous, progress, cancelled):
+    def wait_for_cancel(items, suppliers, previous, progress, cancelled, **kwargs):
         while not cancelled():
             time.sleep(.005)
         return []
@@ -573,3 +573,20 @@ def test_checkbox_outline_follows_theme(app):
         assert f"border: 2px solid {THEMES[name]['ACCENT']}" in style
         check = style.split('url("')[1].split('")')[0]
         assert Path(check).is_file()
+
+
+def test_catalog_page_adds_references_to_search(app, store):
+    from klmelec.discovery import Discovery
+    from klmelec.suppliers.base import ProductLink
+    window = MainWindow(store, 'test')
+    link = ProductLink('https://www.elecdistrib.fr/x-406921-3245064069212.html', 'LEG-406921',
+                       '3245064069212', expected_title='Disjoncteur 4P 25A Legrand Réf. 406921')
+    before = window.supplier_model.configured('elecdistrib')
+    window.catalog_page.ready(Discovery([('elecdistrib', '406921', 'Disjoncteur 4P 25A Legrand', link)],
+                                        [('123elec', 'https://www.123elec.com/y.html', 'Hors famille')], []))
+    assert any(label.endswith('· Legrand · 406921') for label in window.labels)
+    assert window.supplier_model.configured('elecdistrib') == before + 1
+    assert '1 nouvelle(s) référence(s)' in window.catalog_page.report.toPlainText()
+    assert 'Hors famille' in window.catalog_page.report.toPlainText()
+    assert 'www.elecdistrib.fr : 1' in window.catalog_page.status.text()
+    window.close()

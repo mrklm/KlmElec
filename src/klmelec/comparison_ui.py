@@ -49,14 +49,14 @@ class ComparisonWorker(QThread):
     failed = Signal(str)
     progress = Signal(str)
 
-    def __init__(self, items, suppliers, previous, parent=None):
+    def __init__(self, items, suppliers, previous, parent=None, links=None):
         super().__init__(parent)
-        self.items, self.suppliers, self.previous = items, suppliers, previous
+        self.items, self.suppliers, self.previous, self.links = items, suppliers, previous, links
 
     def run(self):
         try:
             offers = compare(self.items, self.suppliers, self.previous,
-                             self.progress.emit, self.isInterruptionRequested)
+                             self.progress.emit, self.isInterruptionRequested, links=self.links)
             self.completed.emit(offers)
         except Exception:
             self.failed.emit('La comparaison a échoué. Les anciens relevés sont conservés.')

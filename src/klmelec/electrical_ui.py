@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, Q
                              QPushButton, QComboBox, QSpinBox, QLineEdit, QTableWidget,
                              QTableWidgetItem, QHeaderView, QTextBrowser)
 
-from .electrical import USES, circuits, evaluate
+from .electrical import USES, circuits, curve, differential, evaluate, unrecognized
 
 
 class ElectricalPage(QWidget):
@@ -61,6 +61,13 @@ class ElectricalPage(QWidget):
         for widget in (self.rating, self.kind, self.sensitivity):
             differential.addWidget(widget)
         form.addRow('Différentiel prévu (à lire sur l’appareil)', differential)
+        self.device = QComboBox()
+        self.device.setToolTip('Remplit le calibre, le type et la sensibilité d’après un interrupteur différentiel de la liste.')
+        self.device.activated.connect(self.fill_from_device)
+        form.addRow('Pré-remplir depuis la liste', self.device)
+        self.device_note = QLabel()
+        self.device_note.setWordWrap(True)
+        form.addRow(self.device_note)
         layout.addLayout(form)
         self.row_name.setMaxLength(80)
         self.row_name.editingFinished.connect(self.change_row)
@@ -91,12 +98,22 @@ class ElectricalPage(QWidget):
         for row in self.plan['rows']:
             self.row_choice.addItem(row['name'], row['id'])
         self.row_choice.setCurrentIndex(max(0, self.row_choice.findData(selected)))
-        self.units = list(circuits(self.store.items()))
+        items = self.store.items()
+        self.device.clear()
+        self.devices = [(item, info) for item in items if (info := differential(item))]
+        self.device.addItem('Choisir un interrupteur différentiel…' if self.devices
+                            else 'Aucun interrupteur différentiel monophasé dans la liste')
+        for item, _ in self.devices:
+            self.device.addItem(f"{item['reference']} — {item['name']}")
+        self.units = list(circuits(items))
+        self.ignored = list(unrecognized(items))
         # Keep very large procurement lists from creating thousands of widgets.
         shown = self.units[:500]
         self.table.setRowCount(len(shown))
         for index, (key, item, ordinal, amps) in enumerate(shown):
-            for col, text in enumerate((f"{item['reference']} · exemplaire {ordinal+1}", f'{amps} A')):
+            kind = curve(item)
+            rating = f'{amps} A · courbe {kind}' if kind else f'{amps} A · courbe non indiquée'
+            for col, text in enumerate((f"{item['reference']} · exemplaire {ordinal+1}", rating)):
                 cell = QTableWidgetItem(text)
                 cell.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 self.table.setItem(index, col, cell)
@@ -142,10 +159,12 @@ class ElectricalPage(QWidget):
     def show_row(self):
         if self.loading:
             return
+        self.device_note.clear()
         row = next((r for r in self.plan['rows'] if r['id'] == self.row_choice.currentData()), None)
         self.loading = True
         for widget in (self.row_name, self.rating, self.kind, self.sensitivity):
             widget.setEnabled(row is not None)
+        self.device.setEnabled(row is not None and bool(self.devices))
         self.row_name.setText(row['name'] if row else '')
         self.rating.setCurrentIndex(self.rating.findData(row['rating'] if row else 0))
         self.kind.setCurrentText(row['type'] if row else 'À préciser')
@@ -163,6 +182,22 @@ class ElectricalPage(QWidget):
         self.persist()
         self.refresh()
 
+    def fill_from_device(self, index):
+        if index < 1 or self.row_choice.currentData() is None:
+            return
+        item, info = self.devices[index - 1]
+        self.loading = True
+        self.rating.setCurrentIndex(self.rating.findData(info['rating']))
+        self.kind.setCurrentText(info['type'])
+        self.sensitivity.setCurrentIndex(self.sensitivity.findData(info['sensitivity']))
+        self.loading = False
+        self.change_row()
+        missing = [label for label, unknown in (('calibre', not info['rating']), ('type', info['type'] == 'À préciser'),
+                                                ('sensibilité', not info['sensitivity'])) if unknown]
+        self.device_note.setText(f"Valeurs reprises de {item['reference']}. "
+                                 + (f"Non indiqué dans la désignation : {', '.join(missing)}. " if missing else '')
+                                 + 'Vérifiez-les sur l’appareil.')
+
     def change_method(self):
         if self.loading:
             return
@@ -179,12 +214,13 @@ class ElectricalPage(QWidget):
     def update_report(self):
         unassigned = sum(not self.plan['circuits'].get(key, {}).get('row') for key, *_ in self.units)
         self.coverage.setText(f'{len(self.units)} circuits reconnus · {unassigned} non affectés. '
-                             'Références reconnues : Legrand 406771, 406773, 406774, 406775, 406777. '
+                             'Disjoncteurs Legrand phase + neutre ou bipolaires, reconnus d’après leur désignation. '
                              'Les autres articles ne sont pas évalués.' +
+                             ''.join(f" {item['reference']} non évalué : {reason}." for item, reason in self.ignored) +
                              (' Affichage limité à 500 circuits : fractionnez la liste.' if len(self.units) > 500 else ''))
         parts = []
         for row in self.plan['rows']:
-            assigned = [(amps, self.plan['circuits'][key]['use']) for key, _, _, amps in self.units
+            assigned = [(amps, self.plan['circuits'][key]['use'], curve(item)) for key, item, _, amps in self.units
                         if self.plan['circuits'].get(key, {}).get('row') == row['id']]
             result = evaluate(row, assigned, self.plan['method'], self.plan['upstream'])
             parts.append(f"<h3>{escape(row['name'])} — {result['status']}</h3><p>{len(assigned)} circuit(s) / 8 · {escape(result['formula'])}</p>")

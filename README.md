@@ -1,4 +1,4 @@
-# KlmElec — v1.1.0
+# KlmElec — v1.3.0
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
@@ -18,11 +18,12 @@ La version est centralisée dans `VERSION` : paquet Python, titre de fenêtre et
 
 ## Fonctions
 
-- **Matériel** : catalogue de 28 articles, recherche par désignation ou référence, quantités et lieux par exemplaire.
+- **Matériel** : catalogue de 28 articles extensible automatiquement, recherche par désignation ou référence, quantités et lieux par exemplaire.
 - **Prix** : comparaison TTC, choix manuel du fournisseur par article et total selon les quantités, hors livraison. La comparaison se lance automatiquement à chaque ajout d’article et peut aussi être périodique.
 - **Calcul électrique** : rangées d’un logement monophasé, affectation des circuits, usages et caractéristiques des différentiels. Vérifications amont/aval, calibre, nombre de circuits, type et sensibilité ; données manquantes signalées.
 - **Paramètres** : fournisseurs, historique, seuils de livraison offerte saisis manuellement, TVA, colonne HT optionnelle et 16 thèmes (cases à cocher contourées à la couleur du thème).
 - **Listes** : enregistrement JSON et accès aux fichiers depuis le raccourci disquette.
+- **Catalogue** : recherche automatique d’une famille de produits chez les deux fournisseurs (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers de répartition, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés Legrand pour l’instant). Chaque fiche est contrôlée avant ajout ; les lots et accessoires sont écartés.
 
 ## Conserver ses listes
 
@@ -39,6 +40,9 @@ Catalogue, fournisseurs, lieux, préférences et historique sont conservés dans
 | 123 Elec et Elec Distrib | Legrand : 404926, 405000, 405001, 406771, 406773, 406774, 406775, 406777, 411617, 411633, 411638, 412408 |
 | 123 Elec uniquement | Wago : WAG2106-5201, WAG2106-5204, WAG2106-5207, WAG2106-1291 |
 | 123 Elec uniquement | IKEPE : IKE821023 (tableau nu 3 rangées), IKE821053 (porte blanche) |
+| Selon le fournisseur | Disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers de répartition, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés Legrand trouvés par **Paramètres → Catalogue** (environ 80 disjoncteurs, 40 différentiels, 7 télérupteurs, 12 peignes, 13 contacteurs, 4 parafoudres, 7 interrupteurs-sectionneurs, 10 horloges, 11 répartiteurs, 10 borniers, 3 GTL, 3 accessoires GTL, 8 coffrets, 16 portes et 8 rehausses Drivia, 17 tableaux pré-équipés, références d’origine comprises, lors du relevé du 14/11/2026) |
+
+La recherche du catalogue utilise le plan de site de 123 Elec et les pages de catégorie d’Elec Distrib : leurs moteurs de recherche sont exclus par robots.txt. Une fiche n’est retenue que si sa marque, sa référence, son EAN, son titre et son offre TTC sont confirmés ; un EAN différent selon le fournisseur l’écarte. Les fiches retenues sont conservées dans la base locale, celles configurées dans le code restent prioritaires.
 
 Le catalogue et la couverture des prix sont distincts : un article sans fiche configurée reste utilisable dans une liste. Le minimum automatique exige des offres comparables chez tous les fournisseurs actifs ; une offre disponible seule peut être sélectionnée manuellement.
 
@@ -52,7 +56,7 @@ Les anciennes listes IKE portant la marque « À confirmer » restent compatible
 
 Les prix dépendent des sites fournisseurs. Les frais de livraison ne sont pas ajoutés au total. **YESSS Électrique** est proposé désactivé, sans connecteur ; **Leroy Merlin** n’est pas intégré. Ajouter un fournisseur ne crée pas de connecteur.
 
-Le calcul électrique reconnaît les cinq références de disjoncteurs ci-dessus. Il vérifie des critères renseignés et **ne valide pas la conformité globale de l’installation**. Voir le [périmètre détaillé et les sources](docs/calcul-electrique.md).
+Le calcul électrique reconnaît les disjoncteurs Legrand phase + neutre ou bipolaires d’après leur désignation (calibre et courbe), y compris ceux ajoutés par la recherche du catalogue ; les disjoncteurs différentiels, de branchement et triphasés sont écartés avec leur motif. Il vérifie des critères renseignés et **ne valide pas la conformité globale de l’installation**. Voir le [périmètre détaillé et les sources](docs/calcul-electrique.md).
 
 ## Tests et documentation
 

@@ -22,6 +22,7 @@ from .data import Store, matches
 from . import __version__
 from .shipping_ui import ShippingPanel
 from .electrical_ui import ElectricalPage
+from .catalog_ui import CatalogPage
 from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
 from .suppliers import CONNECTORS
@@ -36,12 +37,16 @@ class SupplierModel(QAbstractTableModel):
         super().__init__()
         self.store = store
         self.rows = store.suppliers()
+        self.discovered = store.product_links()
 
     def rowCount(self, parent=QModelIndex()):
         return 0 if parent.isValid() else len(self.rows)
 
     def columnCount(self, parent=QModelIndex()):
         return 0 if parent.isValid() else 4
+
+    def configured(self, connector):
+        return len(set(CONNECTORS[connector].links) | set(self.discovered.get(connector, {})))
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -51,11 +56,12 @@ class SupplierModel(QAbstractTableModel):
         if index.isValid() and role == Qt.DisplayRole:
             row = self.rows[index.row()]
             return [row['name'], row['url'], 'Oui' if row['active'] else 'Non',
-                    f"{len(CONNECTORS[row['connector']].links)} références configurées" if row['connector'] in CONNECTORS else 'Connecteur nécessaire'][index.column()]
+                    f"{self.configured(row['connector'])} références configurées" if row['connector'] in CONNECTORS else 'Connecteur nécessaire'][index.column()]
 
     def refresh(self):
         self.beginResetModel()
         self.rows = self.store.suppliers()
+        self.discovered = self.store.product_links()
         self.endResetModel()
 
 
@@ -146,13 +152,10 @@ class MainWindow(QMainWindow):
         self.search = QComboBox()
         self.search.setEditable(True)
         self.search.setInsertPolicy(QComboBox.NoInsert)
-        self.products = store.products()
-        self.labels = {f"{p['name']} · {p['brand']} · {p['reference']}": p['id'] for p in self.products}
-        self.search.addItems(list(self.labels))
-        self.search.setCurrentIndex(-1)
         self.search.lineEdit().setPlaceholderText('Exemple : disj 16, legrand, 406774…')
         self.search.setMinimumWidth(420)
-        self.suggestions = QStringListModel(list(self.labels), self)
+        self.suggestions = QStringListModel(self)
+        self.reload_catalog()
         self.completer = QCompleter(self.suggestions, self)
         self.completer.setCompletionMode(QCompleter.UnfilteredPopupCompletion)
         self.search.setCompleter(self.completer)
@@ -249,7 +252,7 @@ class MainWindow(QMainWindow):
 
         suppliers = QWidget()
         supplier_layout = QVBoxLayout(suppliers)
-        supplier_note = QLabel('123 Elec et Elec Distrib : 12 références Legrand configurées (disjoncteurs, différentiels, peignes 404926 / 405000 / 405001 et télérupteur 412408).\n123 Elec : également les quatre références Wago 2106, le tableau IKE821023 et la porte IKE821053. IKE824302 : lot de 5 exclu du calcul unitaire.\nUn fournisseur ajouté nécessite un connecteur compatible. Les lots sont exclus du minimum unitaire.')
+        supplier_note = QLabel('123 Elec et Elec Distrib : 12 références Legrand configurées (disjoncteurs, différentiels, peignes 404926 / 405000 / 405001 et télérupteur 412408).\n123 Elec : également les quatre références Wago 2106, le tableau IKE821023 et la porte IKE821053. IKE824302 : lot de 5 exclu du calcul unitaire.\nParamètres → Catalogue ajoute automatiquement d’autres références (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés Legrand).\nUn fournisseur ajouté nécessite un connecteur compatible. Les lots sont exclus du minimum unitaire.')
         supplier_note.setWordWrap(True)
         supplier_layout.addWidget(supplier_note)
         self.supplier_model = SupplierModel(store)
@@ -388,6 +391,11 @@ class MainWindow(QMainWindow):
         comparison_layout.addRow(note)
         self.settings_sections.addTab(comparison_settings, 'Comparaison')
         self.settings_sections.addTab(self.shipping_panel.settings_page, 'Livraison')
+        self.catalog_page = CatalogPage(store, can_start=lambda: self.worker is None)
+        self.catalog_page.changed.connect(self.reload_catalog)
+        self.catalog_page.changed.connect(self.supplier_model.refresh)
+        self.catalog_page.finished.connect(self.discovery_finished)
+        self.settings_sections.addTab(self.catalog_page, 'Catalogue')
         self.comparison_timer = QTimer(self)
         self.comparison_timer.timeout.connect(self.run_periodic_comparison)
         self.auto_compare.toggled.connect(self.configure_comparison_timer)
@@ -408,7 +416,8 @@ class MainWindow(QMainWindow):
             Enregistrez votre liste dans un fichier pour la retrouver plus tard.</p>
 
             <p><b>Calcul électrique :</b> pour un logement monophasé, créez vos rangées,
-            affectez chaque disjoncteur reconnu et précisez son usage ainsi que les caractéristiques
+            affectez chaque disjoncteur reconnu (Legrand phase + neutre ou bipolaire, calibre et courbe lus
+            dans sa désignation) et précisez son usage ainsi que les caractéristiques
             du différentiel prévu. Choisissez la règle amont ou aval pour consulter les critères détaillés.
             Les rangées sont enregistrées avec la liste. Ce contrôle ne valide pas la conformité globale du tableau.</p>
 
@@ -480,6 +489,9 @@ class MainWindow(QMainWindow):
             <h3>6. Vérifier les références du catalogue</h3>
             <p>Le catalogue contient <b>{len(self.products)} articles</b>.
             Les marques « À confirmer » et les références préfixées restent à vérifier.</p>
+            <p>Dans <b>Paramètres → Catalogue</b>, choisissez une famille puis cliquez sur <b>Rechercher</b>
+            pour ajouter automatiquement les produits trouvés chez les fournisseurs. Chaque fiche est contrôlée
+            avant ajout ; les lots et accessoires sont écartés. Les articles existants ne sont pas modifiés.</p>
         ''')
         help_layout.addWidget(help_content)
         help_index = tabs.addTab(help_page, '?')
@@ -661,6 +673,9 @@ class MainWindow(QMainWindow):
     def start_comparison(self, *, force=False):
         if self.worker and self.worker.isRunning():
             return
+        if self.catalog_page.busy():
+            self.statusBar().showMessage('Recherche du catalogue en cours : la comparaison sera possible ensuite.')
+            return
         items = [dict(row) for row in self.store.items()]
         suppliers = [dict(row) for row in self.store.suppliers() if row['active']]
         if not items or not suppliers:
@@ -678,7 +693,7 @@ class MainWindow(QMainWindow):
         for widget in self.busy_widgets:
             widget.setEnabled(False)
         self.cancel_button.setEnabled(True)
-        self.worker = ComparisonWorker(items, suppliers, previous, self)
+        self.worker = ComparisonWorker(items, suppliers, previous, self, links=self.store.product_links())
         self.worker.progress.connect(self.statusBar().showMessage)
         self.worker.completed.connect(self.comparison_ready)
         self.worker.failed.connect(self.comparison_failed)
@@ -728,7 +743,17 @@ class MainWindow(QMainWindow):
             self.cancel_button.setEnabled(False)
             self.statusBar().showMessage('Annulation demandée — attente de la requête en cours (délai réseau : 15 s).')
 
+    def discovery_finished(self):
+        if self.close_pending and self.worker is None:
+            self.close_pending = False
+            self.close()
+
     def closeEvent(self, event):
+        if self.catalog_page.busy():
+            self.close_pending = True
+            self.catalog_page.cancel()
+            event.ignore()
+            return
         if self.worker is not None:
             self.close_pending = True
             self.cancel_comparison()
@@ -790,6 +815,16 @@ class MainWindow(QMainWindow):
         self.material_model.refresh()
         self.add_place.setCurrentIndex(self.add_place.findData(location_id))
         self.place_name.clear()
+
+    def reload_catalog(self):
+        current = self.search.currentText()
+        self.products = self.store.products()
+        self.labels = {f"{p['name']} · {p['brand']} · {p['reference']}": p['id'] for p in self.products}
+        self.search.clear()
+        self.search.addItems(list(self.labels))
+        self.search.setCurrentIndex(-1)
+        self.search.setEditText(current)
+        self.suggestions.setStringList(list(self.labels))
 
     def filter_products(self, query):
         self.suggestions.setStringList([label for label in self.labels if matches(query, label)])

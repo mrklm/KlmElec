@@ -5,6 +5,7 @@ import unicodedata
 from importlib.resources import files
 from urllib.parse import urlsplit
 from .electrical import empty_plan, prune_plan, validate_plan
+from .suppliers.base import ProductLink
 
 
 def normalize(text):
@@ -57,6 +58,11 @@ class Store:
                     PRIMARY KEY(product_id, ordinal));
                 CREATE TABLE IF NOT EXISTS comparisons (
                     id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS product_links (
+                    connector TEXT NOT NULL, reference TEXT NOT NULL, brand TEXT NOT NULL,
+                    url TEXT NOT NULL, sku TEXT NOT NULL, ean TEXT NOT NULL,
+                    title TEXT NOT NULL, discovered_at TEXT NOT NULL,
+                    PRIMARY KEY(connector, reference));
             ''')
             if not self.db.execute("SELECT 1 FROM settings WHERE key='seeded'").fetchone():
                 for product in json.loads(files('klmelec').joinpath('catalog.json').read_text()):
@@ -236,7 +242,10 @@ class Store:
                 cleaned.append(place)
             seen.add(product_id)
             validated.append((product_id, quantity, cleaned))
-        validate_plan(payload.get('electrical', empty_plan()), payload['items'])
+        # La désignation du catalogue permet de reconnaître les disjoncteurs du fichier.
+        names = {(p['brand'], p['reference']): p['name'] for p in self.products()}
+        validate_plan(payload.get('electrical', empty_plan()),
+                      [dict(item, name=names[(item['brand'], item['reference'])]) for item in payload['items']])
         return validated
 
     def import_list(self, payload):
@@ -270,6 +279,29 @@ class Store:
 
     def suppliers(self):
         return self.db.execute('SELECT * FROM suppliers WHERE archived=0 ORDER BY name').fetchall()
+
+    def product_links(self):
+        """Fiches découvertes automatiquement : {connecteur: {référence: ProductLink}}."""
+        links = {}
+        for row in self.db.execute('SELECT * FROM product_links'):
+            links.setdefault(row['connector'], {})[row['reference']] = ProductLink(
+                row['url'], row['sku'], row['ean'], brand=row['brand'], expected_title=row['title'])
+        return links
+
+    def save_discovery(self, links, discovered_at):
+        """Ajoute les références absentes du catalogue sans modifier celles qui existent."""
+        added = 0
+        with self.db:
+            for connector, reference, name, link in links:
+                added += self.db.execute('INSERT OR IGNORE INTO products(name,brand,reference) VALUES (?,?,?)',
+                                         (name, link.brand, reference)).rowcount
+                self.db.execute('INSERT INTO product_links VALUES (?,?,?,?,?,?,?,?) '
+                                'ON CONFLICT(connector, reference) DO UPDATE SET brand=excluded.brand, '
+                                'url=excluded.url, sku=excluded.sku, ean=excluded.ean, '
+                                'title=excluded.title, discovered_at=excluded.discovered_at',
+                                (connector, reference, link.brand, link.url, link.sku, link.ean,
+                                 link.expected_title, discovered_at))
+        return added
 
     def save_supplier(self, name, url, active=True, supplier_id=None):
         name, url = validate_supplier(name, url)
