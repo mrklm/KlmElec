@@ -611,3 +611,30 @@ def test_communication_modules_exclude_enclosures_with_patch_panel():
             found[family] = {ref for _, ref, _, _ in discover(family, client=client, pause=lambda _: None).links}
     assert found == {'modules-communication-legrand': {'413003', '413013'},
                      'coffrets-communication-legrand': {'413218'}}
+
+
+def test_twilight_switch_family_skips_spare_cells():
+    sitemap = 'https://www.123elec.com/media/sitemap/sitemap.xml'
+    category = 'https://www.elecdistrib.fr/142-horloge-modulaire-legrand'
+    slugs = {
+        'legrand-interrupteur-crepusculaire-16a-412623.html':
+            ('LEG412623', '3245064126236', 'LEGRAND Interrupteur crépusculaire 16A avec cellule extérieure - 412623', 'LEGRAND'),
+        'legrand-cellule-photoelectrique-pour-interrupteur-crepusculaire-412860.html':
+            ('LEG412860', '3245064128605', 'LEGRAND Cellule photoélectrique IP65 pour interrupteur crépusculaire modulaire - 412860'),
+    }
+    pages = {sitemap: '<urlset>' + ''.join(f'<url><loc>{E123}{slug}</loc></url>' for slug in slugs) + '</urlset>',
+             category: f'<a href="{ED}1-horloge-digitale-legrand-ref-412641-3245064126410.html">x</a>',
+             ED + '1-horloge-digitale-legrand-ref-412641-3245064126410.html':
+                 page('LEG-412641', '3245064126410', 'Horloge digitale programmable Legrand Réf: 412641')}
+    pages.update({E123 + slug: page(*data) for slug, data in slugs.items()})
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = discover('crepusculaires-legrand', client=client, pause=lambda _: None)
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', '412623')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille', 'Hors famille']

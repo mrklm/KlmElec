@@ -140,6 +140,12 @@ FAMILIES = {
         excluded=(), others=('coffrets-communication-legrand',), sku_pattern=r'LEG-?(\d{6})',
         elec123_url=('/legrand-', ('brassage', '-dti', 'filtre-maitre', 'repartiteur-tv', 'terminaison', 'support-box')),
         elecdistrib_categories=('https://www.elecdistrib.fr/24-coffret-de-communication-legrand-portes',)),
+    # Rangés avec les horloges chez Elec Distrib.
+    'crepusculaires-legrand': Family(
+        label='Interrupteurs crépusculaires Legrand', brand='Legrand', keyword='crepusculaire',
+        excluded=('pour interrupteur',),  # cellules de rechange
+        sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', 'crepusculaire'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/142-horloge-modulaire-legrand',)),
 }
 
 PACK = re.compile(r'\b(?:lot|pack|bo[iî]te|sachet)\s+de\s+(\d+)\b', re.I)

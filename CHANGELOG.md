@@ -1,5 +1,10 @@
 # Historique
 
+## 1.21.0 — 2026-11-14
+
+- Ajoute la famille « Interrupteurs crépusculaires Legrand » à Paramètres → Catalogue ; les cellules de rechange sont écartées.
+- Vérifié en conditions réelles le 14/11/2026 : 2 nouvelles références (2 fiches 123 Elec, 1 Elec Distrib). Valide ces changements avec 159 tests automatisés.
+
 ## 1.20.0 — 2026-11-14
 
 - Ajoute la famille « Modules de communication Legrand » (brassage, DTI, filtre, répartiteur TV, DTIO, support box) à Paramètres → Catalogue.
