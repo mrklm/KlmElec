@@ -1,5 +1,16 @@
 # Historique
 
+## 1.39.0 — 2026-11-15
+
+- Page principale : cartes Livraison et Total réduites d’un tiers en hauteur.
+- Carte Livraison sans liste déroulante : une ligne par fournisseur (123 Elec en haut, Elec Distrib en bas), « livraison gratuite » en vert ou « livraison gratuite dans XX,XX € » d’après les offres retenues et le seuil HT ou TTC saisi ; un fournisseur sans article retenu n’est pas affiché.
+- Paramètres → Livraison : case « Afficher les infos de livraison sur la page principale », cochée par défaut et mémorisée. Valide ces changements avec 217 tests automatisés.
+
+## 1.38.0 — 2026-11-15
+
+- Nouvel onglet « Norme » : liste de PDF choisis sur le disque (norme NF C 15-100, guides), lecture intégrée avec pages, zoom, recherche surlignée et sommaire ; document et page retrouvés au lancement suivant. Aucun PDF n’est fourni ni copié : seuls les chemins sont enregistrés dans la base locale.
+- PDF protégé ou illisible : message explicite et bouton « Ouvrir avec le lecteur du système ». Valide ces changements avec 217 tests automatisés.
+
 ## 1.37.0 — 2026-11-15
 
 - Nouvel onglet « Théorie » : règles amont / aval et sélectivité, principe des disjoncteurs, courbes de déclenchement, différentiels et leurs types, sectionneurs et interrupteurs, calculs de base (intensité, section, chute de tension) et foisonnement, avec sommaire cliquable et exemples chiffrés. Valide ces changements avec 216 tests automatisés.

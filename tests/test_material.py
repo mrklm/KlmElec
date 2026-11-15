@@ -147,6 +147,9 @@ def test_manual_offer_updates_frame_and_totals(store, app):
     model.offers[0]['cached'] = True
     model.refresh_prices()
     assert window.total_label.text() == 'Total TTC\n20,55 €'
+    # Carte livraison : seul le fournisseur retenu est affiché.
+    shipping = lambda: [label.text().split(' :')[0] for label in window.shipping_panel.lines]
+    assert shipping() == ['Elec Distrib']
     assert model.index(0, 5).data() == '7,50 €'
     assert model.select_offer(model.index(0, 5))
     assert model.index(0, 5).data(BEST_PRICE_ROLE)
@@ -154,6 +157,7 @@ def test_manual_offer_updates_frame_and_totals(store, app):
     assert model.index(0, 8).data() == '22,50 €'
     assert model.index(0, 7).data() == '18,75 €'
     assert window.total_label.text() == 'Total TTC\n22,50 €'
+    assert shipping() == ['123 Elec']
     assert '22,50' in window.summary.text()
     model.setData(model.index(0, 3), 4)
     assert window.total_label.text() == 'Total TTC\n30,00 €'

@@ -138,7 +138,7 @@ def test_settings_sections_and_theme_persistence(app, tmp_path):
     db = Store(path)
     window = MainWindow(db, 'test')
     window.show()
-    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique', 'Théorie']
+    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique', 'Théorie', 'Norme']
     assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
         'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison', 'Catalogue']
     assert window.theme_selector.currentText() == DEFAULT_THEME
@@ -271,38 +271,49 @@ def test_cancel_save_file_keeps_window_open(app, store, monkeypatch):
 
 
 def test_shipping_thresholds_per_supplier(app, store):
+    from decimal import Decimal
+    from klmelec.shipping_ui import FREE
     window = MainWindow(store, 'test')
     panel = window.shipping_panel
-    assert 'non renseigné' in panel.message.text()
-    first = panel.edit_supplier.currentData()
+    lines = lambda: [label.text() for label in panel.lines]
+    assert lines() == ['123 Elec : seuil non renseigné (Paramètres → Livraison)',
+                       'Elec Distrib : seuil non renseigné (Paramètres → Livraison)']
+    first, second = (s['id'] for s in store.suppliers() if s['active'])
+    panel.edit_supplier.setCurrentIndex(panel.edit_supplier.findData(first))
     panel.known.setChecked(True)
     panel.threshold.setValue(250)
     panel.basis.setCurrentText('HT')
     panel.conditions.setText('Point relais uniquement')
     panel.save_button.click()
-    assert '250,00 € HT' in panel.message.text()
-    assert panel.message.toolTip() == 'Point relais uniquement'
+    assert lines()[0] == '123 Elec : livraison gratuite dans 250,00 €'
+    assert panel.lines[0].toolTip() == 'Livraison offerte dès 250,00 € HT. Point relais uniquement'
     assert window.total_label.text() == 'Total TTC\n0,00 €'
-    panel.supplier.setCurrentIndex(1)
-    assert 'non renseigné' in panel.message.text()
-    panel.edit_supplier.setCurrentIndex(1)
+    panel.edit_supplier.setCurrentIndex(panel.edit_supplier.findData(second))
     assert not panel.known.isChecked()
     panel.known.setChecked(True)
     panel.threshold.setValue(150)
     panel.save_button.click()
-    assert '150,00 € TTC' in panel.message.text()
+    assert lines()[1] == 'Elec Distrib : livraison gratuite dans 150,00 €'
+    # Montant restant calculé sur les offres retenues ; fournisseur sans article retenu masqué.
+    panel.set_subtotals({first: (Decimal('262.50'), Decimal('315.00'))})
+    assert lines() == ['123 Elec : livraison gratuite']
+    assert FREE in panel.lines[0].styleSheet()
+    panel.set_subtotals({first: (Decimal('200'), Decimal('240')), second: (Decimal('100'), Decimal('120.45'))})
+    assert lines() == ['123 Elec : livraison gratuite dans 50,00 €', 'Elec Distrib : livraison gratuite dans 29,55 €']
+    # Case « Afficher les infos de livraison » : cochée par défaut, mémorisée.
+    window.show()
+    assert panel.show_info.isChecked() and panel.isVisible()
+    panel.show_info.setChecked(False)
+    assert not panel.isVisible()
     window.close()
     window = MainWindow(store, 'test')
     panel = window.shipping_panel
     assert panel.rule(first)['threshold'] == '250.0'
-    assert '250,00 € HT' in panel.message.text()
-    panel.known.setChecked(False)
-    panel.save_button.click()
-    assert 'non renseigné' in panel.message.text()
+    assert not panel.show_info.isChecked() and panel.isHidden()
     for supplier in store.suppliers():
         store.archive_supplier(supplier['id'])
     window.supplier_model.refresh()
-    assert panel.message.text() == 'Aucun fournisseur'
+    assert lines() == ['Aucun fournisseur actif']
     assert not panel.save_button.isEnabled()
     window.close()
 
@@ -646,3 +657,45 @@ def test_theory_tab_sections(app, store):
     for title in ('Amont et aval', 'Disjoncteurs', 'Courbes', 'Différentiels', 'Sectionneurs', 'Calculs', 'Foisonnement'):
         assert title in text
     assert 'tu ' not in text.casefold()  # vouvoiement uniquement
+
+
+def test_norm_tab_reads_user_pdf(app, store, tmp_path, monkeypatch):
+    import time
+    from PySide6.QtGui import QPdfWriter, QPainter, QPageSize
+    from klmelec.norm import NormPage
+    pdf = tmp_path / 'guide.pdf'
+    writer = QPdfWriter(str(pdf))
+    writer.setPageSize(QPageSize(QPageSize.A4))
+    painter = QPainter(writer)
+    for number in range(3):
+        if number:
+            writer.newPage()
+        painter.drawText(200, 400, f'Page {number + 1} differentiel 30 mA')
+    painter.end()
+    (tmp_path / 'faux.pdf').write_text('pas un pdf')
+
+    page = NormPage(store)
+    page.show()  # le surlignage des résultats est dessiné : QPdfView plantait sans résultat courant
+    assert page.message.text().startswith('Ajoutez vos documents PDF')
+    assert not page.remove_button.isEnabled()
+    page.add(path=str(pdf))
+    assert page.document.pageCount() == 3 and page.page_count.text() == '/ 3'
+    page.search.setText('differentiel')
+    page.find(1)
+    deadline = time.monotonic() + 5
+    while page.search_model.count() < 3 and time.monotonic() < deadline:
+        app.processEvents()
+    assert page.results.text().endswith('/ 3')
+    page.find(1)
+    app.processEvents()
+    assert page.results.text() == '2 / 3' and page.outline.isHidden()
+    page.add(path=str(pdf))  # pas de doublon
+    assert page.list.count() == 1
+    page.add(path=str(tmp_path / 'faux.pdf'))
+    assert 'lecteur du système' in page.message.text() and page.external_button.isEnabled()
+    # Liste et document courant retrouvés au prochain lancement.
+    again = NormPage(store)
+    assert again.list.count() == 2 and again.list.currentRow() == 1
+    monkeypatch.setattr('klmelec.norm.QMessageBox.question', lambda *args: QMessageBox.Yes)
+    again.remove()
+    assert [entry['path'] for entry in again.documents] == [str(pdf.resolve())]

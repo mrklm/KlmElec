@@ -247,21 +247,22 @@ class MainWindow(QMainWindow):
         self.summary.setWordWrap(True)
         footer_controls.addWidget(self.summary)
         self.summary_cards = QWidget()
-        self.summary_cards.setMinimumHeight(112)
+        self.summary_cards.setMinimumHeight(75)
         self.summary_cards.setStyleSheet('QFrame[summaryCard="true"] { border: 2px solid palette(mid); border-radius: 6px; }')
         cards_layout = QHBoxLayout(self.summary_cards)
         cards_layout.setContentsMargins(0, 0, 0, 0)
         cards_layout.setSpacing(10)
         self.shipping_panel = ShippingPanel(store)
         cards_layout.addWidget(self.shipping_panel, 3)
+        self.shipping_panel.setVisible(self.shipping_panel.show_info.isChecked())
         self.total_card = QFrame()
         self.total_card.setProperty('summaryCard', True)
         total_layout = QVBoxLayout(self.total_card)
-        total_layout.setContentsMargins(14, 12, 14, 12)
+        total_layout.setContentsMargins(12, 4, 12, 4)
         self.total_label = QLabel('Total TTC\n0,00 €')
         self.total_label.setAlignment(Qt.AlignCenter)
         self.total_label.setMinimumWidth(180)
-        self.total_label.setStyleSheet('font-size: 20px; font-weight: 600;')
+        self.total_label.setStyleSheet('font-size: 17px; font-weight: 600;')
         total_layout.addWidget(self.total_label)
         self.total_label.setToolTip('Somme des offres retenues multipliées par les quantités. Hors livraison.')
         cards_layout.addWidget(self.total_card, 2)
@@ -890,10 +891,14 @@ class MainWindow(QMainWindow):
     def update_summary(self):
         rows = self.material_model.rows
         totals = []
+        per_supplier = {}
         for row in rows:
             winner = self.material_model.selected_offer(row)
             if winner:
                 totals.append(amounts(winner['ttc'], row['quantity'], self.material_model.vat)[2:])
+                ht, ttc = per_supplier.get(winner['supplier_id'], (Decimal(0), Decimal(0)))
+                per_supplier[winner['supplier_id']] = (ht + totals[-1][0], ttc + totals[-1][1])
+        self.shipping_panel.set_subtotals(per_supplier)
         if rows and len(totals) == len(rows):
             ht = sum((t[0] for t in totals), Decimal(0))
             ttc = sum((t[1] for t in totals), Decimal(0))
