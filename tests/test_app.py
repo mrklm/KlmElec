@@ -138,7 +138,7 @@ def test_settings_sections_and_theme_persistence(app, tmp_path):
     db = Store(path)
     window = MainWindow(db, 'test')
     window.show()
-    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique', '?']
+    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique']
     assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
         'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison', 'Catalogue']
     assert window.theme_selector.currentText() == DEFAULT_THEME
@@ -618,3 +618,23 @@ def test_catalog_all_families_chained(app, store, monkeypatch):
     assert '3/%d famille(s)' % len(FAMILIES) in page.report.toPlainText()
     assert 'accès limité' in page.report.toPlainText()
     assert page.worker is None and page.start_button.isEnabled()
+
+
+def test_help_button_and_reference_export(app, store, tmp_path):
+    import json
+    from klmelec.suppliers.base import ProductLink
+    window = MainWindow(store, 'test')
+    assert window.help_button.size() == window.lists_shortcut.sizeHint()
+    window.help_button.click()
+    assert window.help_dialog.isVisible()
+    window.help_dialog.close()
+    link = ProductLink('https://www.123elec.com/x.html', 'SCHA9F77210', '3606480087788',
+                       brand='Schneider Electric', expected_title='Disjoncteur A9F77210')
+    store.save_discovery([('123elec', 'A9F77210', 'Disjoncteur iC60N 1P 10A C', link)], '2026-11-15')
+    assert window.catalog_page.export(path=str(tmp_path / 'refs'))
+    data = json.loads((tmp_path / 'refs.json').read_text(encoding='utf-8'))
+    assert data['format'] == 'klmelec-references'
+    assert data['references'] == [{'connector': '123elec', 'reference': 'A9F77210', 'brand': 'Schneider Electric',
+                                   'name': 'Disjoncteur iC60N 1P 10A C', 'url': 'https://www.123elec.com/x.html',
+                                   'sku': 'SCHA9F77210', 'ean': '3606480087788',
+                                   'title': 'Disjoncteur A9F77210', 'discovered_at': '2026-11-15'}]

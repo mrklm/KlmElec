@@ -288,6 +288,18 @@ class Store:
                 row['url'], row['sku'], row['ean'], brand=row['brand'], expected_title=row['title'])
         return links
 
+    def export_discovery(self, exported_at):
+        """Fiches découvertes avec la désignation du catalogue, pour un export JSON."""
+        rows = self.db.execute('SELECT l.*, p.name FROM product_links l LEFT JOIN products p '
+                               'ON p.reference=l.reference AND p.brand=l.brand '
+                               'ORDER BY l.brand, l.reference, l.connector').fetchall()
+        return {'format': 'klmelec-references', 'version': 1, 'exported_at': exported_at,
+                'references': [{'connector': row['connector'], 'reference': row['reference'],
+                                'brand': row['brand'], 'name': row['name'] or row['title'],
+                                'url': row['url'], 'sku': row['sku'], 'ean': row['ean'],
+                                'title': row['title'], 'discovered_at': row['discovered_at']}
+                               for row in rows]}
+
     def save_discovery(self, links, discovered_at):
         """Ajoute les références absentes du catalogue sans modifier celles qui existent."""
         added = 0

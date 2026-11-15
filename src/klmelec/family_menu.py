@@ -1,4 +1,4 @@
-"""Bouton « Familles » : domaine → famille → (sous-famille) → article, ouvert au survol."""
+"""Bouton « Familles » : domaine → famille (→ marque) → (sous-famille) → article, ouvert au survol."""
 import re
 
 from PySide6.QtCore import Signal
@@ -13,22 +13,34 @@ from .variants import breaker, breaker_kind, breaker_label, residual, residual_k
 LARGE = 20         # au-delà, la famille est découpée en sous-familles
 LABEL_LENGTH = 70
 
-# Regroupement des familles du catalogue pour le menu.
+# Regroupement des familles du catalogue pour le menu : domaine → type de produit → marque.
+# Type None : les marques sont directement sous le domaine (Appareillage → Legrand → Dooxie, Mosaic…).
+# Plusieurs familles d'une même marque sous un type : un niveau de plus, au nom de la famille.
 DOMAINS = [
-    ('Protection', ('disjoncteurs-legrand', 'differentiels-legrand', 'disjoncteurs-schneider', 'differentiels-schneider',
-                    'disjoncteurs-hager', 'differentiels-hager', 'parafoudres-legrand', 'sectionneurs-legrand')),
-    ('Commande', ('telerupteurs-legrand', 'contacteurs-legrand', 'horloges-legrand', 'crepusculaires-legrand')),
-    ('Mesure', ('compteurs-legrand',)),
-    ('Répartition', ('peignes-legrand', 'repartiteurs-legrand', 'borniers-legrand')),
-    ('Tableaux', ('coffrets-drivia-legrand', 'portes-drivia-legrand', 'rehausses-drivia-legrand',
-                  'tableaux-pre-equipes-legrand')),
-    ('GTL', ('gtl-legrand', 'accessoires-gtl-legrand')),
-    ('Communication', ('coffrets-communication-legrand', 'modules-communication-legrand')),
-    ('Boîtes et connexion', ('boites-legrand', 'wago')),
-    ('Domotique', ('yokis',)),
-    ('Sécurité', ('securite-legrand',)),
-    ('Appareillage', ('dooxie-legrand', 'mosaic-legrand', 'celiane-legrand', 'plexo-legrand', 'niloe-legrand',
-                      'saillie-legrand')),
+    ('Protection', (('Disjoncteurs', ('disjoncteurs-legrand', 'disjoncteurs-schneider', 'disjoncteurs-hager')),
+                    ('Interrupteurs différentiels', ('differentiels-legrand', 'differentiels-schneider',
+                                                     'differentiels-hager')),
+                    ('Parafoudres', ('parafoudres-legrand',)),
+                    ('Interrupteurs-sectionneurs', ('sectionneurs-legrand',)))),
+    ('Commande', (('Télérupteurs', ('telerupteurs-legrand',)), ('Contacteurs', ('contacteurs-legrand',)),
+                  ('Horloges modulaires', ('horloges-legrand',)),
+                  ('Interrupteurs crépusculaires', ('crepusculaires-legrand',)))),
+    ('Mesure', (('Compteurs d’énergie', ('compteurs-legrand',)),)),
+    ('Répartition', (('Peignes d’alimentation', ('peignes-legrand',)), ('Répartiteurs', ('repartiteurs-legrand',)),
+                     ('Borniers de répartition', ('borniers-legrand',)))),
+    ('Tableaux', (('Coffrets nus', ('coffrets-drivia-legrand',)), ('Portes de coffret', ('portes-drivia-legrand',)),
+                  ('Rehausses de coffret', ('rehausses-drivia-legrand',)),
+                  ('Tableaux pré-équipés', ('tableaux-pre-equipes-legrand',)))),
+    ('GTL', (('GTL (gaines techniques de logement)', ('gtl-legrand',)),
+             ('Accessoires GTL', ('accessoires-gtl-legrand',)))),
+    ('Communication', (('Coffrets de communication', ('coffrets-communication-legrand',)),
+                       ('Modules de communication', ('modules-communication-legrand',)))),
+    ('Boîtes et connexion', (('Boîtes (encastrement, DCL, dérivation)', ('boites-legrand',)),
+                             ('Bornes de connexion', ('wago',)))),
+    ('Domotique', ((None, ('yokis',)),)),
+    ('Sécurité', (('Éclairage de sécurité (BAES)', ('securite-legrand',)),)),
+    ('Appareillage', ((None, ('dooxie-legrand', 'mosaic-legrand', 'celiane-legrand', 'plexo-legrand',
+                              'niloe-legrand', 'saillie-legrand')),)),
 ]
 RANGES = {'dooxie-legrand', 'mosaic-legrand', 'celiane-legrand', 'plexo-legrand', 'niloe-legrand', 'saillie-legrand'}
 OTHERS = 'Autres articles'
@@ -60,6 +72,19 @@ ORDERS = {'yokis': [name for name, _ in YOKIS] + [YOKIS_OTHERS],
           'boites-legrand': ['Encastrement cloison sèche', 'Encastrement à sceller', 'Encastrement multimatériaux',
                              'Encastrement étanche à l’air (Ecobatibox)', 'Encastrement pour sol', 'Boîtes de dérivation',
                              'Boîtes de combles', 'DCL', 'Supports', 'Couvercles et accessoires', BOXES_OTHERS]}
+
+
+def brand_name(key):
+    """« Schneider Electric » → « Schneider » dans le niveau marque du menu."""
+    return FAMILIES[key].brand.split()[0]
+
+
+def family_title(key):
+    """Nom de la famille sans la marque : « Plexo Legrand (étanche) » → « Plexo (étanche) »."""
+    brand = FAMILIES[key].brand.casefold().split()
+    title = ' '.join(word for word in FAMILIES[key].label.split() if word.casefold() not in brand)
+    title = title.removeprefix('Appareillage ')  # déjà le nom du domaine
+    return title[:1].upper() + title[1:]
 
 
 def subfamily(key, words):
@@ -147,28 +172,31 @@ class FamilyButton(QToolButton):
         menu = self.menu()
         menu.clear()
         families, others = grouped(products)
-        for domain, keys in DOMAINS:
-            present = [key for key in keys if key in families]
-            if not present:
+        for domain, entries in DOMAINS:
+            entries = [(title, keys) for title, keys in entries if any(key in families for key in keys)]
+            if not entries:
                 continue
             domain_menu = menu.addMenu(domain)
-            for key in present:
-                family_menu = domain_menu.addMenu(f'{FAMILIES[key].label} ({len(families[key])})')
-                if key in VARIANTS:
-                    self.fill_variants(family_menu, key, families[key])
-                    continue
-                if key in RANGES:
-                    self.fill_fittings(family_menu, families[key])
-                    continue
-                if len(families[key]) <= LARGE:
-                    self.fill(family_menu, families[key])
-                    continue
-                groups = {}
-                for product in families[key]:
-                    groups.setdefault(subfamily(key, plain(product['name'])), []).append(product)
-                order = ORDERS.get(key, [])
-                for name in sorted(groups, key=lambda n: (order.index(n) if n in order else len(order), n)):
-                    self.fill_by_rating(family_menu.addMenu(f'{name} ({len(groups[name])})'), groups[name])
+            for title, keys in entries:
+                parent = domain_menu
+                if title:
+                    parent = domain_menu.addMenu(f'{title} ({sum(len(families.get(key, ())) for key in keys)})')
+                # Le niveau « famille » dépend des familles prévues, pas de celles déjà trouvées :
+                # avec la seule gamme Mosaic au catalogue, le menu affiche quand même Legrand → Mosaic.
+                brands = {}
+                for key in keys:
+                    brands.setdefault(brand_name(key), []).append(key)
+                for brand, brand_keys in brands.items():
+                    present = [key for key in brand_keys if key in families]
+                    if not present:
+                        continue
+                    brand_menu = parent.addMenu(f'{brand} ({sum(len(families[key]) for key in present)})')
+                    if len(brand_keys) == 1:
+                        self.fill_family(brand_menu, present[0], families[present[0]])
+                        continue
+                    for key in present:
+                        self.fill_family(brand_menu.addMenu(f'{family_title(key)} ({len(families[key])})'),
+                                         key, families[key])
         if others:
             others_menu = menu.addMenu(OTHERS)
             for brand in sorted(others, key=str.casefold):
@@ -176,6 +204,22 @@ class FamilyButton(QToolButton):
         if not families:
             hint = menu.addAction('Recherchez d’autres familles dans Paramètres → Catalogue')
             hint.setEnabled(False)
+
+    @classmethod
+    def fill_family(cls, menu, key, products):
+        if key in VARIANTS:
+            cls.fill_variants(menu, key, products)
+        elif key in RANGES:
+            cls.fill_fittings(menu, products)
+        elif len(products) <= LARGE:
+            cls.fill(menu, products)
+        else:
+            groups = {}
+            for product in products:
+                groups.setdefault(subfamily(key, plain(product['name'])), []).append(product)
+            order = ORDERS.get(key, [])
+            for name in sorted(groups, key=lambda n: (order.index(n) if n in order else len(order), n)):
+                cls.fill_by_rating(menu.addMenu(f'{name} ({len(groups[name])})'), groups[name])
 
     @classmethod
     def fill_variants(cls, menu, key, products):

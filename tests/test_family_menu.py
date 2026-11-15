@@ -40,17 +40,22 @@ def test_family_button_adds_clicked_product(tmp_path):
     tree = menu_tree(window.family_button.menu())
     assert list(tree) == ['Protection', 'Commande', 'Répartition', 'Boîtes et connexion', 'Appareillage',
                           'Autres articles']
-    assert list(tree['Boîtes et connexion']) == ['Boîtes Legrand (Batibox, DCL, dérivation) (1)', 'Bornes Wago (4)']
-    assert tree['Appareillage'] == {'Mosaic Legrand (3)': tree['Appareillage']['Mosaic Legrand (3)']}
-    assert set(tree['Appareillage']['Mosaic Legrand (3)']) == {
+    assert list(tree['Boîtes et connexion']) == ['Boîtes (encastrement, DCL, dérivation) (1)', 'Bornes de connexion (4)']
+    assert list(tree['Boîtes et connexion']['Bornes de connexion (4)']) == ['Wago (4)']
+    assert list(tree['Commande']) == ['Télérupteurs (1)']
+    assert list(tree['Commande']['Télérupteurs (1)']) == ['Legrand (1)']
+    assert list(tree['Appareillage']) == ['Legrand (3)']
+    assert list(tree['Appareillage']['Legrand (3)']) == ['Mosaic (3)']
+    assert set(tree['Appareillage']['Legrand (3)']['Mosaic (3)']) == {
         'Prises de courant (1)', 'Interrupteurs et va-et-vient (1)', 'Accessoires et supports (1)'}
-    assert list(tree['Protection']) == ['Disjoncteurs Legrand (5)', 'Interrupteurs différentiels Legrand (4)']
+    assert list(tree['Protection']) == ['Disjoncteurs (5)', 'Interrupteurs différentiels (4)']
+    assert list(tree['Protection']['Disjoncteurs (5)']) == ['Legrand (5)']
     assert 'Wago (4)' not in tree['Autres articles']
     # Bundled references: verified variants (DNX³ Ph+N curve C, differentials 411611/411617/411633/411638).
-    breakers = tree['Protection']['Disjoncteurs Legrand (5)']['Monophasés / bipolaires (5)']
+    breakers = tree['Protection']['Disjoncteurs (5)']['Legrand (5)']['Monophasés / bipolaires (5)']
     assert list(breakers) == ['2 A (1)', '10 A (1)', '16 A (1)', '20 A (1)', '32 A (1)']
     product_id = breakers['16 A (1)']['Ph+N · courbe C · 6 kA · vis · DNX³ · 406774']
-    rcds = tree['Protection']['Interrupteurs différentiels Legrand (4)']
+    rcds = tree['Protection']['Interrupteurs différentiels (4)']['Legrand (4)']
     assert rcds == {'Type AC (2)': {'40 A (1)': {'30 mA · 2P · vis · 411611': rcds['Type AC (2)']['40 A (1)']['30 mA · 2P · vis · 411611']},
                                     '63 A (1)': {'30 mA · 2P · auto · 411633': rcds['Type AC (2)']['63 A (1)']['30 mA · 2P · auto · 411633']}},
                     'Type A (2)': {'40 A (2)': rcds['Type A (2)']['40 A (2)']}}
@@ -103,8 +108,15 @@ def test_breaker_and_rcd_menus_split_by_kind_then_rating():
              'Interrupteur différentiel 40A 30mA type A', 'Interrupteur différentiel 63A 30mA type B',
              'Interrupteur différentiel 40A 30mA type AC', 'Interrupteur différentiel 63A 300mA']
     button = FamilyButton()
-    button.set_products([product(n, reference=str(400000 + i), id=i) for i, n in enumerate(names)])
+    others = [product('Disjoncteur 1P+N 16A courbe C iC60N', brand='Schneider Electric', reference='A9F77616', id=50),
+              product('Disjoncteur 1P+N 10A courbe C', brand='Hager', reference='MFN710', id=51)]
+    button.set_products([product(n, reference=str(400000 + i), id=i) for i, n in enumerate(names)] + others)
     tree = menu_tree(button.menu())['Protection']
+    assert list(tree) == ['Disjoncteurs (9)', 'Interrupteurs différentiels (4)']
+    assert list(tree['Disjoncteurs (9)']) == ['Legrand (7)', 'Schneider (1)', 'Hager (1)']
+    assert list(tree['Interrupteurs différentiels (4)']) == ['Legrand (4)']
+    tree = {'Disjoncteurs Legrand (7)': tree['Disjoncteurs (9)']['Legrand (7)'],
+            'Interrupteurs différentiels Legrand (4)': tree['Interrupteurs différentiels (4)']['Legrand (4)']}
     breakers = tree['Disjoncteurs Legrand (7)']
     assert list(breakers) == ['Disjoncteurs de branchement (1)', 'Disjoncteurs différentiels (1)',
                               'Monophasés / bipolaires (4)', 'Tétrapolaires / triphasés (1)']
@@ -132,7 +144,7 @@ def test_yokis_menu_split_by_function():
     button.set_products(products * 5)  # au-delà de 20 articles : découpage par fonction
     tree = menu_tree(button.menu())
     assert list(tree) == ['Domotique']
-    assert list(tree['Domotique']['Domotique Yokis (25)']) == [
+    assert list(tree['Domotique']['Yokis (25)']) == [
         'Kits radio (5)', 'Volets roulants (5)', 'Télérupteurs (5)', 'Émetteurs (5)', 'Passerelles et accessoires (5)']
 
 
@@ -148,7 +160,7 @@ def test_legrand_boxes_menu_split_by_use():
              'LEGRAND Batibox Couvercle universel pour boite encastrement simple']
     button = FamilyButton()
     button.set_products([product(n, reference=str(80000 + i), id=i) for i, n in enumerate(names * 3)])
-    boxes = menu_tree(button.menu())['Boîtes et connexion']['Boîtes Legrand (Batibox, DCL, dérivation) (21)']
+    boxes = menu_tree(button.menu())['Boîtes et connexion']['Boîtes (encastrement, DCL, dérivation) (21)']['Legrand (21)']
     assert list(boxes) == ['Encastrement cloison sèche (3)', 'Encastrement à sceller (3)',
                            'Encastrement étanche à l’air (Ecobatibox) (3)', 'Boîtes de dérivation (3)', 'DCL (3)',
                            'Supports (3)', 'Couvercles et accessoires (3)']

@@ -1,10 +1,12 @@
 """Paramètres → Catalogue : recherche automatique d'une famille de produits."""
+import json
 from collections import Counter
 from html import escape
+from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QSaveFile, QIODevice, QStandardPaths
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-                               QPushButton, QTextBrowser)
+                               QPushButton, QTextBrowser, QFileDialog, QMessageBox)
 
 from .comparison import now
 from .discovery import FAMILIES, discover
@@ -81,6 +83,10 @@ class CatalogPage(QWidget):
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self.cancel)
         controls.addWidget(self.cancel_button)
+        self.export_button = QPushButton('Exporter les références…')
+        self.export_button.setToolTip('Enregistrer les fiches découvertes dans un fichier JSON')
+        self.export_button.clicked.connect(self.export)
+        controls.addWidget(self.export_button)
         layout.addLayout(controls)
         self.status = QLabel()
         self.status.setWordWrap(True)
@@ -117,6 +123,26 @@ class CatalogPage(QWidget):
         self.worker.failed.connect(self.status.setText)
         self.worker.finished.connect(self.done)
         self.worker.start()
+
+    def export(self, *, path=None):
+        if path is None:
+            folder = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+            path, _ = QFileDialog.getSaveFileName(self, 'Exporter les références',
+                                                  str(Path(folder) / 'references-klmelec.json'),
+                                                  'Références KLM Elec (*.json)')
+            if not path:
+                return False
+        if not Path(path).suffix:
+            path += '.json'
+        exported = self.store.export_discovery(now())
+        data = json.dumps(exported, ensure_ascii=False, indent=2).encode('utf-8')
+        output = QSaveFile(path)
+        if not (output.open(QIODevice.WriteOnly) and output.write(data) == len(data) and output.commit()):
+            output.cancelWriting()
+            QMessageBox.warning(self, 'Export impossible', output.errorString())
+            return False
+        self.status.setText(f'{len(exported["references"])} fiche(s) exportée(s) : {path}')
+        return True
 
     def cancel(self):
         if self.worker:

@@ -1,5 +1,18 @@
 # Historique
 
+## 1.36.0 — 2026-11-15
+
+- Menu « Familles » : niveau marque pour toutes les familles (domaine → type de produit → marque), même quand une seule marque est proposée ; Appareillage → Legrand → gamme, Domotique → Yokis. Valide ces changements avec 215 tests automatisés.
+
+## 1.35.0 — 2026-11-15
+
+- Menu « Familles » : les disjoncteurs et les interrupteurs différentiels sont regroupés par type puis par marque (Protection → Disjoncteurs → Legrand / Schneider / Hager), au lieu d’une entrée par marque. Valide ces changements avec 215 tests automatisés.
+
+## 1.34.0 — 2026-11-15
+
+- Paramètres → Catalogue : bouton « Exporter les références… » qui enregistre en JSON les fiches découvertes (fournisseur, référence, marque, désignation, adresse, SKU, EAN, date).
+- L’aide n’est plus un onglet : le bouton « ? », de la taille de la disquette, l’ouvre dans une fenêtre séparée depuis le coin supérieur droit ; la disquette passe à gauche. Valide ces changements avec 215 tests automatisés.
+
 ## 1.33.0 — 2026-11-15
 
 - Paramètres → Catalogue : option « Toutes les familles » qui enchaîne la recherche de chaque famille (une heure environ). Chaque famille terminée est enregistrée aussitôt ; le rapport résume les ajouts par famille. Annuler conserve les familles déjà parcourues, et un refus d’accès (403/429) arrête l’enchaînement.

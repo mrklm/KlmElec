@@ -139,7 +139,16 @@ class MainWindow(QMainWindow):
         self.lists_shortcut.setToolTip('Enregistrer / charger une liste')
         self.lists_shortcut.setAccessibleName('Enregistrer / charger une liste')
         self.lists_shortcut.clicked.connect(self.open_lists)
-        header_layout.addWidget(self.lists_shortcut, 0, 0, Qt.AlignTop | Qt.AlignRight)
+        header_layout.addWidget(self.lists_shortcut, 0, 0, Qt.AlignTop | Qt.AlignLeft)
+        self.help_button = QToolButton()
+        self.help_button.setText('?')
+        self.help_button.setAutoRaise(True)
+        self.help_button.setFixedSize(self.lists_shortcut.sizeHint())
+        self.help_button.setStyleSheet('QToolButton { font-size: 46px; font-weight: 700; padding: 0; }')
+        self.help_button.setToolTip('Aide')
+        self.help_button.setAccessibleName('Aide')
+        self.help_button.clicked.connect(self.show_help)
+        header_layout.addWidget(self.help_button, 0, 0, Qt.AlignTop | Qt.AlignRight)
         central_layout.addLayout(header_layout)
         tabs = QTabWidget()
         central_layout.addWidget(tabs)
@@ -506,9 +515,10 @@ class MainWindow(QMainWindow):
             avant ajout ; les lots et accessoires sont écartés. Les articles existants ne sont pas modifiés.</p>
         ''')
         help_layout.addWidget(help_content)
-        help_index = tabs.addTab(help_page, '?')
-        tabs.setTabToolTip(help_index, 'Aide')
-        tabs.tabBar().setAccessibleTabName(help_index, 'Aide')
+        self.help_dialog = QDialog(self)
+        self.help_dialog.setWindowTitle('Aide — KlmElec')
+        self.help_dialog.resize(800, 600)
+        QVBoxLayout(self.help_dialog).addWidget(help_page)
         self.reload_places()
         self.tabs = tabs
         self.busy_widgets = [self.search, self.family_button, self.quantity, add, self.remove,
@@ -582,6 +592,11 @@ class MainWindow(QMainWindow):
 
     def load_list_item(self, item):
         self.load_list(path=item.data(Qt.UserRole))
+
+    def show_help(self):
+        self.help_dialog.show()
+        self.help_dialog.raise_()
+        self.help_dialog.activateWindow()
 
     def save_list(self):
         path, _ = QFileDialog.getSaveFileName(self, 'Enregistrer une liste', str(self.lists_directory / 'liste-klmelec.json'), 'Liste KLM Elec (*.json)')

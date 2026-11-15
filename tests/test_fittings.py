@@ -61,7 +61,7 @@ def test_ranges_classified_and_menu_built():
     def tree(m):
         return {a.text(): tree(a.menu()) if a.menu() else a.data() for a in m.actions()}
 
-    dooxie = tree(menu)['Appareillage']['Dooxie Legrand (7)']
+    dooxie = tree(menu)['Appareillage']['Legrand (7)']['Dooxie (7)']
     assert list(dooxie) == ['Prises de courant (2)', 'Poussoirs (1)', 'Plaques de finition (3)', 'Accessoires et supports (1)']
     assert list(dooxie['Prises de courant (2)']) == ['Mécanismes (1)', 'Complets (1)']
     assert list(dooxie['Plaques de finition (3)']) == ['1 poste (1)', '2 postes (2)']
@@ -105,7 +105,7 @@ def test_long_lists_split_by_finish():
              ['blanc'] * 8 + ['titane'] * 6 + ['verre piano'] * 4 + ['noir'] * 3 + ['chêne', 'jaune safran']]
     button = FamilyButton()
     button.set_products([product(n, reference=f'CP{i:04d}', id=i) for i, n in enumerate(names)])
-    plates = button.menu().actions()[0].menu().actions()[0].menu().actions()[0].menu()
+    plates = button.menu().actions()[0].menu().actions()[0].menu().actions()[0].menu().actions()[0].menu()
     # A single plate size: no size level, finishes directly.
     assert [a.text() for a in plates.actions()] == ['Blanc (8)', 'Noir et graphite (3)', 'Métal (6)', 'Bois (1)',
                                                    'Verre (4)', 'Couleurs et matières (1)']
