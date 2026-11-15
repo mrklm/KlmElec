@@ -2,7 +2,7 @@
 from collections import Counter
 from html import escape
 
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
                                QPushButton, QTextBrowser)
 
@@ -11,21 +11,42 @@ from .discovery import FAMILIES, discover
 from .suppliers import CONNECTORS
 
 
+ALL = '*'
+
+
+def blocked(result):
+    """Un site a refusé l'accès (403/429) : inutile d'enchaîner les familles suivantes."""
+    return any('accès limité' in message or 'HTTP 403' in message or 'HTTP 429' in message
+               for message in result.errors)
+
+
 class DiscoveryWorker(QThread):
-    completed = Signal(object)
+    completed = Signal(object, str)
     failed = Signal(str)
     progress = Signal(str)
 
-    def __init__(self, family, known, parent=None):
+    def __init__(self, families, known, parent=None):
         super().__init__(parent)
-        self.family, self.known = family, known
+        self.families, self.known = list(families), set(known)
 
     def run(self):
-        try:
-            self.completed.emit(discover(self.family, self.known, self.progress.emit,
-                                         self.isInterruptionRequested))
-        except Exception:
-            self.failed.emit('La recherche a échoué. Le catalogue n’a pas été modifié.')
+        total = len(self.families)
+        for number, family in enumerate(self.families, 1):
+            if self.isInterruptionRequested():
+                return
+            prefix = f'Famille {number}/{total} — ' if total > 1 else ''
+            try:
+                result = discover(family, self.known, lambda text: self.progress.emit(prefix + text),
+                                  self.isInterruptionRequested)
+            except Exception:
+                self.failed.emit(f'La recherche « {FAMILIES[family].label} » a échoué. '
+                                 'Les familles déjà terminées restent enregistrées.' if number > 1 else
+                                 'La recherche a échoué. Le catalogue n’a pas été modifié.')
+                return
+            self.known.update((key, ref) for key, ref, *_ in result.links)
+            self.completed.emit(result, family)
+            if blocked(result):
+                return
 
 
 class CatalogPage(QWidget):
@@ -40,13 +61,18 @@ class CatalogPage(QWidget):
         note = QLabel('Recherchez automatiquement les produits d’une famille chez 123 Elec et Elec Distrib. '
                       'Chaque fiche est ouverte et contrôlée (référence, EAN, marque, prix TTC, conditionnement) '
                       'avant d’être ajoutée au catalogue. Les lots sont exclus.\n'
-                      'Une requête par seconde : comptez quelques minutes. Les articles existants ne sont pas modifiés.')
+                      'Une requête par seconde : comptez quelques minutes par famille, une heure environ pour toutes. '
+                      'Les articles existants ne sont pas modifiés.')
         note.setWordWrap(True)
         layout.addWidget(note)
         controls = QHBoxLayout()
         self.family = QComboBox()
+        self.family.addItem(f'Toutes les familles ({len(FAMILIES)})', ALL)
+        self.family.setItemData(0, 'Enchaîne la recherche de chaque famille ; comptez une heure environ.',
+                                Qt.ToolTipRole)
         for key, family in FAMILIES.items():
             self.family.addItem(family.label, key)
+        self.family.setCurrentIndex(1)  # évite de lancer par mégarde une recherche d'une heure
         controls.addWidget(self.family, 1)
         self.start_button = QPushButton('Rechercher')
         self.start_button.clicked.connect(self.start)
@@ -83,7 +109,9 @@ class CatalogPage(QWidget):
         self.family.setEnabled(False)
         self.cancel_button.setEnabled(True)
         self.report.clear()
-        self.worker = DiscoveryWorker(self.family.currentData(), known, self)
+        self.reports = []
+        choice = self.family.currentData()
+        self.worker = DiscoveryWorker(list(FAMILIES) if choice == ALL else [choice], known, self)
         self.worker.progress.connect(self.status.setText)
         self.worker.completed.connect(self.ready)
         self.worker.failed.connect(self.status.setText)
@@ -96,13 +124,19 @@ class CatalogPage(QWidget):
             self.cancel_button.setEnabled(False)
             self.status.setText('Annulation demandée — attente de la requête en cours.')
 
-    def ready(self, result):
+    def ready(self, result, family=None):
         try:
             added = self.store.save_discovery(result.links, now())
         except Exception:
+            if self.worker:
+                self.worker.requestInterruption()
             self.status.setText('Impossible d’enregistrer le résultat. Vérifiez l’espace disque et les droits du dossier de données.')
             return
-        self.report.setHtml(render_discovery(result, added))
+        if not self.worker or len(self.worker.families) == 1:
+            self.report.setHtml(render_discovery(result, added))
+        else:
+            self.reports.append((FAMILIES[family].label, result, added))
+            self.report.setHtml(render_all(self.reports, len(self.worker.families)))
         self.show_counts()
         self.changed.emit()
 
@@ -113,6 +147,18 @@ class CatalogPage(QWidget):
         self.worker.deleteLater()
         self.worker = None
         self.finished.emit()
+
+
+def render_all(reports, total):
+    """Rapport de « Toutes les familles » : résumé puis détail de chaque famille terminée."""
+    added = sum(count for _, _, count in reports)
+    parts = [f'<h3>{added} nouvelle(s) référence(s) au catalogue — {len(reports)}/{total} famille(s) parcourue(s)</h3><ul>']
+    parts.extend(f'<li>{escape(label)} : {count} ajoutée(s), {len(result.rejected)} écartée(s)'
+                 + ''.join(f' — <b>{escape(message)}</b>' for message in result.errors) + '</li>'
+                 for label, result, count in reports)
+    parts.append('</ul>')
+    parts.extend(f'<hr><h2>{escape(label)}</h2>' + render_discovery(result, count) for label, result, count in reports)
+    return ''.join(parts)
 
 
 def render_discovery(result, added):

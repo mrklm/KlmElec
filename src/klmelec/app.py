@@ -501,7 +501,7 @@ class MainWindow(QMainWindow):
             <h3>6. Vérifier les références du catalogue</h3>
             <p>Le catalogue contient <b>{len(self.products)} articles</b>.
             Les marques « À confirmer » et les références préfixées restent à vérifier.</p>
-            <p>Dans <b>Paramètres → Catalogue</b>, choisissez une famille puis cliquez sur <b>Rechercher</b>
+            <p>Dans <b>Paramètres → Catalogue</b>, choisissez une famille (ou « Toutes les familles ») puis cliquez sur <b>Rechercher</b>
             pour ajouter automatiquement les produits trouvés chez les fournisseurs. Chaque fiche est contrôlée
             avant ajout ; les lots et accessoires sont écartés. Les articles existants ne sont pas modifiés.</p>
         ''')

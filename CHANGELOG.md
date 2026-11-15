@@ -1,5 +1,10 @@
 # Historique
 
+## 1.33.0 — 2026-11-15
+
+- Paramètres → Catalogue : option « Toutes les familles » qui enchaîne la recherche de chaque famille (une heure environ). Chaque famille terminée est enregistrée aussitôt ; le rapport résume les ajouts par famille. Annuler conserve les familles déjà parcourues, et un refus d’accès (403/429) arrête l’enchaînement.
+- La liste s’ouvre toujours sur la première famille, pour éviter un lancement par mégarde. Valide ces changements avec 214 tests automatisés.
+
 ## 1.32.0 — 2026-11-15
 
 - Ajoute à Paramètres → Catalogue les disjoncteurs et interrupteurs différentiels Schneider Electric (Acti9, Resi9) et Hager ; tableaux pré-équipés, combinés (télérupteur, contacteur, prises), blocs Vigi et lots promotionnels sont écartés.

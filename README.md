@@ -1,4 +1,4 @@
-# KlmElec — v1.32.0
+# KlmElec — v1.33.0
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
@@ -23,7 +23,7 @@ La version est centralisée dans `VERSION` : paquet Python, titre de fenêtre et
 - **Calcul électrique** : rangées d’un logement monophasé, affectation des circuits, usages et caractéristiques des différentiels. Vérifications amont/aval, calibre, nombre de circuits, type et sensibilité ; données manquantes signalées.
 - **Paramètres** : fournisseurs, historique, seuils de livraison offerte saisis manuellement, TVA, colonne HT optionnelle et 16 thèmes (cases à cocher contourées à la couleur du thème).
 - **Listes** : enregistrement JSON et accès aux fichiers depuis le raccourci disquette.
-- **Catalogue** : recherche automatique d’une famille de produits chez les deux fournisseurs (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers de répartition, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés, coffrets et modules de communication, interrupteurs crépusculaires, compteurs d’énergie, éclairage de sécurité Sati, boîtes Legrand, bornes Wago, appareillage Dooxie, Mosaic, Céliane, Plexo, Niloé et saillie Oteo Legrand, domotique Yokis, disjoncteurs et interrupteurs différentiels Schneider et Hager pour l’instant). Chaque fiche est contrôlée avant ajout ; les lots et accessoires sont écartés. Yokis et Wago ne sont recherchés que chez 123 Elec ; une fiche dont l’EAN diffère d’un fournisseur à l’autre est écartée.
+- **Catalogue** : recherche automatique d’une famille de produits chez les deux fournisseurs (disjoncteurs, interrupteurs différentiels, télérupteurs, peignes, contacteurs, parafoudres, interrupteurs-sectionneurs, horloges modulaires, répartiteurs, borniers de répartition, GTL, accessoires GTL, coffrets, portes et rehausses Drivia, tableaux pré-équipés, coffrets et modules de communication, interrupteurs crépusculaires, compteurs d’énergie, éclairage de sécurité Sati, boîtes Legrand, bornes Wago, appareillage Dooxie, Mosaic, Céliane, Plexo, Niloé et saillie Oteo Legrand, domotique Yokis, disjoncteurs et interrupteurs différentiels Schneider et Hager pour l’instant). L’option « Toutes les familles » les enchaîne en une seule recherche (une heure environ). Chaque fiche est contrôlée avant ajout ; les lots et accessoires sont écartés. Yokis et Wago ne sont recherchés que chez 123 Elec ; une fiche dont l’EAN diffère d’un fournisseur à l’autre est écartée.
 
 ## Conserver ses listes
 

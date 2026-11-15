@@ -590,3 +590,31 @@ def test_catalog_page_adds_references_to_search(app, store):
     assert 'Hors famille' in window.catalog_page.report.toPlainText()
     assert 'www.elecdistrib.fr : 1' in window.catalog_page.status.text()
     window.close()
+
+
+def test_catalog_all_families_chained(app, store, monkeypatch):
+    from klmelec import catalog_ui
+    from klmelec.discovery import Discovery, FAMILIES
+    from klmelec.suppliers.base import ProductLink
+    calls = []
+
+    def fake(family, known, progress, cancelled):
+        calls.append((family, set(known)))
+        link = ProductLink('https://www.123elec.com/x.html', 'LEG406774', '3245064067742', brand='Legrand')
+        links = [('123elec', '406774', 'Disjoncteur', link)] if len(calls) == 1 else []
+        errors = ['www.elecdistrib.fr : accès limité, recherche interrompue'] if len(calls) == 3 else []
+        return Discovery(links, [], errors)
+
+    monkeypatch.setattr(catalog_ui, 'discover', fake)
+    page = catalog_ui.CatalogPage(store)
+    assert page.family.itemData(0) == catalog_ui.ALL and page.family.currentIndex() == 1
+    page.family.setCurrentIndex(0)
+    page.start()
+    page.worker.wait()
+    app.processEvents()
+    # Arrêt après la 3e famille (accès limité) ; la référence trouvée n'est plus cherchée ensuite.
+    assert [family for family, _ in calls] == list(FAMILIES)[:3]
+    assert ('123elec', '406774') in calls[1][1]
+    assert '3/%d famille(s)' % len(FAMILIES) in page.report.toPlainText()
+    assert 'accès limité' in page.report.toPlainText()
+    assert page.worker is None and page.start_button.isEnabled()
