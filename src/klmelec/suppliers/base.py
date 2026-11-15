@@ -8,6 +8,12 @@ from decimal import Decimal, InvalidOperation
 from bs4 import BeautifulSoup
 
 
+def same_brand(found, expected):
+    """Même marque au premier mot près : « Schneider Electric » (Elec Distrib) = « SCHNEIDER » (123 Elec)."""
+    found, expected = str(found).casefold().split(), str(expected).casefold().split()
+    return bool(found and expected) and found[0] == expected[0]
+
+
 @dataclass(frozen=True)
 class ProductLink:
     url: str
@@ -76,7 +82,7 @@ class Connector:
         product = candidates[0]
         brand = product.get('brand', {})
         brand = brand.get('name', '') if isinstance(brand, dict) else brand
-        if str(brand).casefold() != link.brand.casefold() or str(product.get('gtin13')) != link.ean:
+        if not same_brand(brand, link.brand) or str(product.get('gtin13')) != link.ean:
             raise OfferError('Marque ou EAN non confirmé')
         offer = product.get('offers')
         if isinstance(offer, list) and len(offer) == 1:

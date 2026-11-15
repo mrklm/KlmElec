@@ -50,7 +50,8 @@ def classify(item):
 DIFFERENTIALS = {'411611': (40, 'AC', 30), '411617': (40, 'A', 30),
                  '411633': (63, 'AC', 30), '411638': (40, 'A', 30)}
 # « TypeAC », « type A » ; Hpi = type A à immunité renforcée chez Legrand.
-RCD_TYPE = re.compile(r'\btype\s*(ac|hpi|a|f|b)\b')
+# « type A », « type Asi », « type A-SI », « type Fsi » (superimmunisé : rangé avec A ou F).
+RCD_TYPE = re.compile(r'\btype\s*(ac|hpi|a|f|b)(?:\s*-?\s*si)?\b')
 SENSITIVITY = re.compile(r'(?<![\d.,])(\d{2,3})\s*ma\b')
 
 

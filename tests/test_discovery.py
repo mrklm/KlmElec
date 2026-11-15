@@ -722,3 +722,97 @@ def test_emergency_lighting_family_ignores_satin_plates():
     assert [(key, ref) for key, ref, _, _ in result.links] == [
         ('123elec', '062525'), ('123elec', '062520'), ('elecdistrib', '062524')]
     assert [reason for *_, reason in result.rejected] == ['Hors famille']
+
+
+def run_family(key, slugs, category_pages=None):
+    sitemap = 'https://www.123elec.com/media/sitemap/sitemap.xml'
+    pages = {sitemap: '<urlset>' + ''.join(f'<url><loc>{E123}{slug}</loc></url>' for slug in slugs) + '</urlset>'}
+    pages.update({E123 + slug: page(*data) for slug, data in slugs.items()})
+    pages.update(category_pages or {})
+
+    def handler(request):
+        if request.url.path == '/robots.txt':
+            return httpx.Response(200, text='')
+        text = pages.get(str(request.url))
+        return httpx.Response(200, text=text) if text else httpx.Response(404)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        return discover(key, client=client, pause=lambda _: None)
+
+
+def test_wago_family_keeps_unit_terminals_and_skips_packs():
+    result = run_family('wago', {
+        'wago-topjobrs-borne-de-passage-a-levier-2-fils-2-5mm-gris-2102-5201.html':
+            ('WAG2102-5201', '4045454080466', 'Wago TOPJOB®S Borne de passage à levier 2 fils 2,5mm² gris - 2102-5201', 'Wago'),
+        'wago-topjobrs-plaque-d-extremite-pour-borne-de-passage-2102-2102-1291.html':
+            ('WAG2102-1291', '4045454080473', 'Wago TOPJOB®S Plaque d\'extrémité pour borne de passage 2102 - 2102-1291', 'Wago'),
+        'wago-pot-de-100-mini-bornes-de-connexion-2-fils-s2273.html':
+            ('WAG2273-202', '4017332270823', 'WAGO Pot de 100 mini bornes de connexion 2 fils S2273', 'Wago'),
+        'wago-s221-blister-de-15-bornes-de-connexion-automatique-2-fils.html':
+            ('WAG221-412', '4055143715386', 'WAGO S221 Blister de 15 bornes de connexion automatique 2 fils', 'Wago'),
+    })
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', 'WAG2102-5201'), ('123elec', 'WAG2102-1291')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille', 'Hors famille']
+
+
+def test_legrand_box_family_skips_plexo_screw_packs_and_oteo_box():
+    category = 'https://www.elecdistrib.fr/188-boites-de-derivation'
+    dlp = f'{ED}1-boite-de-derivation-saillie-75x75x35mm-pour-moulure-dlplus-legrand-ref-030316-3245060303167.html'
+    result = run_family('boites-legrand', {
+        'legrand-batibox-boite-encastrement-simple-pour-cloison-seche-d67-p40-080041.html':
+            ('LEG080041', '3245060800413', 'LEGRAND Batibox Boite encastrement simple pour cloison sèche D67 P40 - 080041', 'LEGRAND'),
+        'legrand-plexo-boite-de-derivation-etanche-ip55-80x80x45-gris-092012.html':
+            ('LEG092012', '3245060920128', 'LEGRAND Plexo Boite de dérivation étanche IP55 80x80x45 gris - 092012', 'LEGRAND'),
+        'legrand-vis-longue-pour-toutes-boites-batibox-o3-mm-long-40-mm.html':
+            ('LEG080197', '3245060801977', 'LEGRAND Batibox 20 vis longues pour boite encastrement Batibox - 080197', 'LEGRAND'),
+        'legrand-boite-de-derivation-en-saillie.html':
+            ('LEG086057', '3245060860578', 'LEGRAND Boîte de dérivation en saillie blanc - 086057', 'LEGRAND'),
+    }, {**{f'https://www.elecdistrib.fr/{c}': '<html></html>' for c in ('53-boites-d-encastrement', '54-boites-dcl', '55-boites-de-comble')},
+        category: f'<a href="{dlp}">x</a>',
+        dlp: page('LEG-030316', '3245060303167', 'Boîte de dérivation saillie 75x75x35mm pour moulure DLPlus Legrand Réf. 030316')})
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', '080041'), ('elecdistrib', '030316')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille'] * 3
+
+
+def test_brand_compared_on_first_word_and_alphanumeric_category_references():
+    from klmelec.discovery import CATEGORY_PRODUCT
+    from klmelec.suppliers.base import same_brand
+    assert same_brand('Schneider Electric', 'SCHNEIDER') and same_brand('LEGRAND', 'Legrand')
+    assert not same_brand('Hager', 'Legrand') and not same_brand('', 'Legrand')
+    html = ('<a href="https://www.elecdistrib.fr/x/1-disjoncteur-schneider-ref-a9f76216-3606480093685.html">'
+            '<a href="https://www.elecdistrib.fr/x/2-disjoncteur-hager-mfn702-3250614318306.html">'
+            '<a href="https://www.elecdistrib.fr/x/3-disjoncteur-legrand-ref-406774-3245064067744.html">')
+    assert [ref for _, ref, _ in CATEGORY_PRODUCT.findall(html)] == ['a9f76216', 'mfn702', '406774']
+
+
+def test_schneider_breakers_found_at_both_suppliers_despite_brand_spelling():
+    category = 'https://www.elecdistrib.fr/147-disjoncteurs-schneider'
+    ed_breaker = f'{ED}1-disjoncteur-acti9-ic60n-2p-10a-courbe-c-schneider-ref-a9f77210-3606480094125.html'
+    ed_combined = f'{ED}2-combine-disjoncteur-10a-telerupteur-schneider-ref-r9ecl610-3606480581199.html'
+    result = run_family('disjoncteurs-schneider', {
+        'schneider-acti9-ic60n-disjoncteur-10a-2p-courbe-c-10ka-230v-a9f77210.html':
+            ('SCHA9F77210', '3606480094125', 'SCHNEIDER Acti9 iC60N Disjoncteur 10A 2P courbe C 10kA 400V - A9F77210', 'SCHNEIDER'),
+        'schneider-resi9-xp-tableau-electrique-prequipe-2-rangees-5-disjoncteurs.html':
+            ('SCHF822821LR9-F', '3606489999999', 'SCHNEIDER Resi9 XP Tableau électrique prééquipé 2 rangées 2ID 40A 5 disjoncteurs', 'SCHNEIDER'),
+    }, {category: f'<a href="{ed_breaker}">x</a><a href="{ed_combined}">y</a>',
+        ed_breaker: page('SCH-A9F77210', '3606480094125', 'Disjoncteur Acti9 iC60N 2P 10A Courbe C Schneider Réf. A9F77210',
+                         'Schneider Electric'),
+        ed_combined: page('SCH-R9ECL610', '3606480581199', 'Combiné disjoncteur 10A + télérupteur Schneider Réf: R9ECL610',
+                          'Schneider Electric')})
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', 'A9F77210'), ('elecdistrib', 'A9F77210')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille', 'Hors famille']
+
+
+def test_hager_residual_current_switches_skip_breakers():
+    category = 'https://www.elecdistrib.fr/260-interrupteurs-differentiels-hager'
+    ed_rcd = f'{ED}1-interrupteur-differentiel-2p-40a-30ma-a-hager-ref-cda743f-3250614321234.html'
+    result = run_family('differentiels-hager', {
+        'hager-interrupteur-differentiel-40a-30ma-type-a-cda743f.html':
+            ('HAGCDA743F', '3250614321234', 'HAGER Interrupteur différentiel 40A 30mA type A 230V - CDA743F', 'HAGER'),
+        'hager-disjoncteur-differentiel-10a-30ma-type-ac-adc710f.html':
+            ('HAGADC710F', '3250614300000', 'HAGER Disjoncteur différentiel 10A 30mA type AC 230V - ADC710F', 'HAGER'),
+    }, {category: f'<a href="{ed_rcd}">x</a>',
+        ed_rcd: page('HAG-CDA743F', '3250614321234', 'Interrupteur différentiel 2P 40A 30mA A à bornes décalées HAGER Réf. CDA743F',
+                     'Hager')})
+    assert [(key, ref) for key, ref, _, _ in result.links] == [('123elec', 'CDA743F'), ('elecdistrib', 'CDA743F')]
+    assert [reason for *_, reason in result.rejected] == ['Hors famille']

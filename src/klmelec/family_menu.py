@@ -5,6 +5,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QMenu, QToolButton
 
 from .discovery import FAMILIES, belongs
+from .suppliers.base import same_brand
 from .electrical import RATING, THREE_PHASE, plain
 from . import fittings
 from .variants import breaker, breaker_kind, breaker_label, residual, residual_kind, residual_label
@@ -14,7 +15,8 @@ LABEL_LENGTH = 70
 
 # Regroupement des familles du catalogue pour le menu.
 DOMAINS = [
-    ('Protection', ('disjoncteurs-legrand', 'differentiels-legrand', 'parafoudres-legrand', 'sectionneurs-legrand')),
+    ('Protection', ('disjoncteurs-legrand', 'differentiels-legrand', 'disjoncteurs-schneider', 'differentiels-schneider',
+                    'disjoncteurs-hager', 'differentiels-hager', 'parafoudres-legrand', 'sectionneurs-legrand')),
     ('Commande', ('telerupteurs-legrand', 'contacteurs-legrand', 'horloges-legrand', 'crepusculaires-legrand')),
     ('Mesure', ('compteurs-legrand',)),
     ('Répartition', ('peignes-legrand', 'repartiteurs-legrand', 'borniers-legrand')),
@@ -22,6 +24,7 @@ DOMAINS = [
                   'tableaux-pre-equipes-legrand')),
     ('GTL', ('gtl-legrand', 'accessoires-gtl-legrand')),
     ('Communication', ('coffrets-communication-legrand', 'modules-communication-legrand')),
+    ('Boîtes et connexion', ('boites-legrand', 'wago')),
     ('Domotique', ('yokis',)),
     ('Sécurité', ('securite-legrand',)),
     ('Appareillage', ('dooxie-legrand', 'mosaic-legrand', 'celiane-legrand', 'plexo-legrand', 'niloe-legrand',
@@ -32,11 +35,11 @@ OTHERS = 'Autres articles'
 
 
 # Familles toujours découpées : (sous-famille, libellé des variantes, ordre des sous-familles).
-VARIANTS = {
-    'disjoncteurs-legrand': (breaker_kind, breaker_label, None),
-    'differentiels-legrand': (residual_kind, residual_label,
-                              ['Type AC', 'Type A', 'Type Hpi', 'Type F', 'Type B', 'Type non indiqué']),
-}
+RCD_ORDER = ['Type AC', 'Type A', 'Type Hpi', 'Type F', 'Type B', 'Type non indiqué']
+VARIANTS = {key: (breaker_kind, breaker_label, None) for key in ('disjoncteurs-legrand', 'disjoncteurs-schneider',
+                                                                  'disjoncteurs-hager')}
+VARIANTS.update({key: (residual_kind, residual_label, RCD_ORDER) for key in ('differentiels-legrand',
+                                                                             'differentiels-schneider', 'differentiels-hager')})
 
 
 # Domotique Yokis : sous-familles par fonction, testées dans cet ordre (un kit contient un télérupteur).
@@ -44,13 +47,27 @@ YOKIS = [('Kits radio', ('kit',)), ('Volets roulants', ('volet',)), ('Télérupt
          ('Minuteries', ('minuterie',)), ('Télévariateurs', ('televariateur',)), ('Émetteurs', ('emetteur',)),
          ('Télécommandes', ('telecommande',))]
 YOKIS_OTHERS = 'Passerelles et accessoires'
-ORDERS = {'yokis': [name for name, _ in YOKIS] + [YOKIS_OTHERS]}
+# Boîtes Legrand : sous-familles testées dans cet ordre (« couvercle pour boîte DCL » est un accessoire).
+# Boîtes d'encastrement réparties par type de pose (Ecobatibox d'abord : elle est aussi « pour cloison sèche »).
+BOXES = [('Couvercles et accessoires', ('couvercle', 'vis longue')), ('Supports', ('support',)),
+         ('DCL', ('dcl',)), ('Boîtes de dérivation', ('derivation',)), ('Boîtes de combles', ('comble',)),
+         ('Encastrement étanche à l’air (Ecobatibox)', ('ecobatibox', 'etanche')),
+         ('Encastrement multimatériaux', ('multimateriaux',)), ('Encastrement pour sol', ('sol',)),
+         ('Encastrement à sceller', ('sceller', 'maconnerie')),
+         ('Encastrement cloison sèche', ('cloison', 'placo', 'encastrement', 'boite', 'monoposte'))]
+BOXES_OTHERS = 'Autres'
+ORDERS = {'yokis': [name for name, _ in YOKIS] + [YOKIS_OTHERS],
+          'boites-legrand': ['Encastrement cloison sèche', 'Encastrement à sceller', 'Encastrement multimatériaux',
+                             'Encastrement étanche à l’air (Ecobatibox)', 'Encastrement pour sol', 'Boîtes de dérivation',
+                             'Boîtes de combles', 'DCL', 'Supports', 'Couvercles et accessoires', BOXES_OTHERS]}
 
 
 def subfamily(key, words):
     """Sous-famille d'un article, pour les autres familles volumineuses."""
     if key == 'yokis':
         return next((name for name, keys in YOKIS if any(k in words for k in keys)), YOKIS_OTHERS)
+    if key == 'boites-legrand':
+        return next((name for name, keys in BOXES if any(k in words for k in keys)), BOXES_OTHERS)
     return 'Tétrapolaires / triphasés' if THREE_PHASE.search(words) else 'Monophasés / bipolaires'
 
 
@@ -61,9 +78,9 @@ def rating(product):
 
 def amps(key, product):
     """Calibre pour le menu, références vérifiées comprises."""
-    if key == 'disjoncteurs-legrand':
+    if key.startswith('disjoncteurs-'):
         return breaker(product)['amps'] or 999
-    if key == 'differentiels-legrand':
+    if key.startswith('differentiels-'):
         return residual(product)['amps'] or 999
     return rating(product)
 
@@ -73,7 +90,7 @@ def families_of(product):
     citée (« support pour Mosaic, Céliane ou Soliroc » figure dans les deux gammes)."""
     words = plain(product['name'])
     found = [key for key, family in FAMILIES.items()
-             if product['brand'].casefold() == family.brand.casefold() and belongs(words, family)
+             if same_brand(product['brand'], family.brand) and belongs(words, family)
              and not any(belongs(words, FAMILIES[other]) for other in family.others)]
     main = [key for key in found if key not in RANGES][:1]
     return main + [key for key in found if key in RANGES]
@@ -99,7 +116,8 @@ def grouped(products):
 
 def short_name(product):
     """Désignation sans la marque, la gamme ni la référence répétées, abrégée pour le menu."""
-    name = re.sub(r'^\s*(?:legrand|' + re.escape(product['brand']) + r')\s+', '', product['name'], flags=re.I)
+    brand = re.escape(product['brand'].split()[0]) if product['brand'].strip() else 'legrand'
+    name = re.sub(r'^\s*(?:legrand|' + brand + r')\s+', '', product['name'], flags=re.I)
     name = re.sub(r'^\s*(?:dooxie|mosaic|c[ée]liane|plexo|nilo[ée]|oteo)\s+|\s+(?:dooxie|mosaic|c[ée]liane|plexo|nilo[ée]|oteo)(?=\s)', '', name, flags=re.I)
     name = re.sub(r'\s*[-–]?\s*(?:legrand\s*)?r[ée]f\s*[.:]?\s*:?\s*\w+.*$', '', name, flags=re.I)
     name = re.sub(r'\s*[-–]\s*' + re.escape(product['reference']) + r'\s*$', '', name)

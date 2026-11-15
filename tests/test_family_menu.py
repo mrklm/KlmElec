@@ -21,9 +21,11 @@ def test_products_classified_like_the_catalogue_search():
     # Complementary families: an enclosure "with patch panel" is not a module.
     assert family_of(product('Coffret de communication basique avec brassage')) == 'coffrets-communication-legrand'
     assert family_of(product('Module de brassage RJ45 pour réseau multimédia')) == 'modules-communication-legrand'
-    assert family_of(product('Disjoncteur 16A', brand='Hager')) is None
-    families, others = grouped([product('Peigne 13u'), product('Borne Wago 6mm2', brand='Wago')])
-    assert list(families) == ['peignes-legrand'] and list(others) == ['Wago']
+    assert family_of(product('Disjoncteur 16A', brand='Hager')) == 'disjoncteurs-hager'
+    assert family_of(product('Disjoncteur 16A', brand='ABB')) is None
+    assert family_of(product('Borne Wago 6mm2 Gris', brand='Wago')) == 'wago'
+    families, others = grouped([product('Peigne 13u'), product('Embouts isolants', brand='IKEPE')])
+    assert list(families) == ['peignes-legrand'] and list(others) == ['IKEPE']
 
 
 def menu_tree(menu):
@@ -36,12 +38,14 @@ def test_family_button_adds_clicked_product(tmp_path):
     store = Store(tmp_path / 'db.sqlite3')
     window = MainWindow(store, 'test')
     tree = menu_tree(window.family_button.menu())
-    assert list(tree) == ['Protection', 'Commande', 'Répartition', 'Appareillage', 'Autres articles']
+    assert list(tree) == ['Protection', 'Commande', 'Répartition', 'Boîtes et connexion', 'Appareillage',
+                          'Autres articles']
+    assert list(tree['Boîtes et connexion']) == ['Boîtes Legrand (Batibox, DCL, dérivation) (1)', 'Bornes Wago (4)']
     assert tree['Appareillage'] == {'Mosaic Legrand (3)': tree['Appareillage']['Mosaic Legrand (3)']}
     assert set(tree['Appareillage']['Mosaic Legrand (3)']) == {
         'Prises de courant (1)', 'Interrupteurs et va-et-vient (1)', 'Accessoires et supports (1)'}
     assert list(tree['Protection']) == ['Disjoncteurs Legrand (5)', 'Interrupteurs différentiels Legrand (4)']
-    assert 'Wago (4)' in tree['Autres articles']
+    assert 'Wago (4)' not in tree['Autres articles']
     # Bundled references: verified variants (DNX³ Ph+N curve C, differentials 411611/411617/411633/411638).
     breakers = tree['Protection']['Disjoncteurs Legrand (5)']['Monophasés / bipolaires (5)']
     assert list(breakers) == ['2 A (1)', '10 A (1)', '16 A (1)', '20 A (1)', '32 A (1)']
@@ -83,7 +87,7 @@ def test_breaker_and_rcd_variants_from_designation():
     assert residual(r) == dict(type='AC', sensitivity=300, amps=40, poles='2P', connection='vis')
     assert residual(product('LEGRAND DX3 Interrupteur différentiel 40A 30MA type HPI auto 230V'))['type'] == 'Hpi'
     assert residual_label(product('Interrupteur différentiel tétrapolaire 63A 30mA type F')) == '30 mA · 4P'
-    assert residual_label(product('Interrupteur différentiel DX³ 25A type A')) == 'sensibilité non indiquée · 2P'
+    assert residual_label(product('Interrupteur différentiel DX³ 25A type A')) == 'sensibilité non indiquée · 2P · DX³'
 
 
 def test_breaker_and_rcd_menus_split_by_kind_then_rating():
@@ -130,3 +134,37 @@ def test_yokis_menu_split_by_function():
     assert list(tree) == ['Domotique']
     assert list(tree['Domotique']['Domotique Yokis (25)']) == [
         'Kits radio (5)', 'Volets roulants (5)', 'Télérupteurs (5)', 'Émetteurs (5)', 'Passerelles et accessoires (5)']
+
+
+def test_legrand_boxes_menu_split_by_use():
+    from klmelec.family_menu import FamilyButton
+    app = QApplication.instance() or QApplication([])
+    names = ['LEGRAND Batibox Boite encastrement simple pour cloison sèche D67 P40',
+             'LEGRAND EcoBatibox Boite encastrement simple étanche à l\'air D67 P40',
+             'LEGRAND Batibox Boite encastrement simple à sceller P40',
+             'LEGRAND Batibox Boite de dérivation placo® 115x115x40',
+             'LEGRAND Batibox Point de centre DCL D67 P50',
+             'LEGRAND Batibox Support simple pour fixation à vis',
+             'LEGRAND Batibox Couvercle universel pour boite encastrement simple']
+    button = FamilyButton()
+    button.set_products([product(n, reference=str(80000 + i), id=i) for i, n in enumerate(names * 3)])
+    boxes = menu_tree(button.menu())['Boîtes et connexion']['Boîtes Legrand (Batibox, DCL, dérivation) (21)']
+    assert list(boxes) == ['Encastrement cloison sèche (3)', 'Encastrement à sceller (3)',
+                           'Encastrement étanche à l’air (Ecobatibox) (3)', 'Boîtes de dérivation (3)', 'DCL (3)',
+                           'Supports (3)', 'Couvercles et accessoires (3)']
+
+
+def test_schneider_and_hager_variants():
+    from klmelec.variants import breaker_label, residual_kind, residual_label
+    assert residual_kind(product('Interrupteur différentiel 2P 40A 30mA A à bornes décalées SanVis Hager', brand='Hager')) == 'Type A'
+    assert residual_label(product('Interrupteur différentiel 2P 40A 30mA A à bornes décalées SanVis Hager', brand='Hager')) == \
+        '30 mA · 2P · auto'
+    fsi = product('SCHNEIDER Resi9 XE Interrupteur différentiel 63A 30mA type Fsi auto 230V - R9ERF263',
+                  brand='Schneider Electric', reference='R9ERF263')
+    assert residual_kind(fsi) == 'Type F' and residual_label(fsi) == '30 mA · SI · 2P · auto · Resi9 XE'
+    assert breaker_label(product('SCHNEIDER Acti9 iDT40T Disjoncteur 10A 3P+N courbe C 6kA 400V - A9P22710')) == \
+        '3P+N · courbe C · 6 kA · iDT40'
+    assert breaker_label(product('Disjoncteur Différentiel Acti9 iDD40T 1P+N 10A Courbe C 4500A/6kA 30mA Type A-SI')) == \
+        'Ph+N · courbe C · 30 mA · type A SI · 6 kA · iDD40'
+    from klmelec.family_menu import short_name
+    assert short_name(fsi) == 'Resi9 XE Interrupteur différentiel 63A 30mA type Fsi auto 230V'

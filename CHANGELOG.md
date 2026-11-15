@@ -1,5 +1,20 @@
 # Historique
 
+## 1.32.0 — 2026-11-15
+
+- Ajoute à Paramètres → Catalogue les disjoncteurs et interrupteurs différentiels Schneider Electric (Acti9, Resi9) et Hager ; tableaux pré-équipés, combinés (télérupteur, contacteur, prises), blocs Vigi et lots promotionnels sont écartés.
+- Reconnaît une marque à son premier mot (« Schneider Electric » chez Elec Distrib, « SCHNEIDER » chez 123 Elec), à la recherche comme au relevé des prix.
+- Lit chez Elec Distrib les références alphanumériques (Schneider A9F77210, Hager MFN702), en plus des références Legrand à 6 chiffres.
+- Menu « Familles » : mêmes niveaux que Legrand (sous-famille ou type, calibre, variantes) ; lit les types Asi / Fsi (mention SI), « 30mA A » sans le mot « type », le 3P+N, les raccordements SanVis et embrochables, et les gammes Resi9 XP / XE, iC60, iC40, iDT40, iDD40 ; la gamme s’affiche aussi pour les différentiels.
+- Vérifié en conditions réelles le 15/11/2026 : 233 références validées (168 disjoncteurs et 44 différentiels Schneider, 13 disjoncteurs et 8 différentiels Hager), dont 70 chez les deux fournisseurs. Deux fiches Elec Distrib (R9EFD620, R9PFC632) sont écartées car leur EAN diffère de celui de 123 Elec. Valide ces changements avec 213 tests automatisés.
+
+## 1.31.0 — 2026-11-15
+
+- Ajoute la famille « Boîtes Legrand » à Paramètres → Catalogue : Batibox, Ecobatibox, boîtes de dérivation, DCL, combles, supports et couvercles ; Plexo, la boîte Oteo en saillie et les lots de vis sont écartés.
+- Ajoute la famille « Bornes Wago » (123 Elec seulement) : bornes de passage TopJob S, plaques d’extrémité, barres de pontage, adaptateurs rail DIN, bornes KNX ; les bornes vendues en pot, flacon, blister, sachet ou panaché sont écartées, comme toute la gamme Elec Distrib (conditionnements de 25 à 100).
+- Ajoute le domaine « Boîtes et connexion » au menu « Familles » ; boîtes classées par type de pose (cloison sèche, à sceller, multimatériaux, étanche à l’air, sol), dérivation, DCL, supports et couvercles.
+- Vérifié en conditions réelles le 15/11/2026 : 59 références de boîtes (53 chez 123 Elec, 15 chez Elec Distrib, dont 9 chez les deux) et 18 références Wago validées. Les Ecobatibox à suffixe L de 123 Elec sont écartées par prudence (autre conditionnement). Valide ces changements avec 209 tests automatisés.
+
 ## 1.30.1 — 2026-11-14
 
 - Met à jour le README : numéro de version du titre (resté à 1.3.0), domaines du menu « Familles », recherche Yokis limitée à 123 Elec et rejet des fiches à EAN différent.

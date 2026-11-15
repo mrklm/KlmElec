@@ -18,7 +18,7 @@ from . import __version__
 from .comparison import MAX_BYTES, read_html, robots_policy
 from .electrical import plain
 from .suppliers import CONNECTORS
-from .suppliers.base import OfferError, ProductLink, json_objects
+from .suppliers.base import OfferError, ProductLink, json_objects, same_brand
 
 SITEMAP_BYTES = 30_000_000
 MAX_PAGES = 50
@@ -37,6 +37,9 @@ class Family:
     others: tuple[str, ...] = ()      # familles complémentaires : leurs fiches sont écartées d'ici
 
 
+BREAKER_EXCLUDED = ('platine', 'tableau', 'cordon', 'prise', 'telerupteur', 'contacteur', 'combine', 'repiquage',
+                    'offert', 'bloc')
+RCD_KEYWORDS = ('interrupteur differentiel', 'inter diff', 'inter. diff')
 GTL_ACCESSORY = ('pour gaine', 'pour goulotte', 'pour gtl', 'embout', 'jonction', 'cornet')
 
 FAMILIES = {
@@ -200,6 +203,42 @@ FAMILIES = {
         label='Éclairage de sécurité Legrand (BAES Sati)', brand='Legrand', keyword=('baes', 'baeh', 'bloc autonome'),
         excluded=(), sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', 'baes'),
         elecdistrib_categories=('https://www.elecdistrib.fr/214-baes',)),
+    # Boîtes d'encastrement, DCL, combles et dérivation ; Plexo et la boîte Oteo « en saillie » restent dans leur gamme.
+    # Les Ecobatibox à suffixe L (autre conditionnement) sont écartées par le motif de référence.
+    'boites-legrand': Family(
+        label='Boîtes Legrand (Batibox, DCL, dérivation)', brand='Legrand', keyword=('batibox', 'boite', 'dcl'),
+        excluded=('ip55', 'coffret', 'en saillie', 'vis longues'), others=('plexo-legrand',),
+        sku_pattern=r'LEG-?(\d{6})', elec123_url=('/legrand-', ('boite', 'batibox', 'dcl')),
+        elecdistrib_categories=('https://www.elecdistrib.fr/53-boites-d-encastrement',
+                                'https://www.elecdistrib.fr/54-boites-dcl',
+                                'https://www.elecdistrib.fr/55-boites-de-comble',
+                                'https://www.elecdistrib.fr/188-boites-de-derivation')),
+    # Wago : bornes à levier vendues en pot, flacon, blister… écartées (comparaison unitaire).
+    # Elec Distrib ne vend que des conditionnements de 25 à 100 pièces.
+    'wago': Family(
+        label='Bornes Wago', brand='Wago', keyword=('borne', 'plaque d extremite', 'plaque d\'extremite', 'adaptateur',
+                                                    'support de fixation', 'barre de pontage'),
+        excluded=('mini bornes', 'bornes de connexion', 'flacon', 'pot de', 'pot panache', 'blister', 'sachet',
+                  'panache', 'valisette', 'lot de', 'pack'),
+        sku_pattern=r'(WAG\d{3,4}-\d{3,4})', elec123_url=('/wago-',), elecdistrib_categories=()),
+    # Schneider Electric et Hager : disjoncteurs (dont différentiels et d'abonné) et interrupteurs différentiels.
+    # Écartés : tableaux pré-équipés, combinés (télérupteur, contacteur, prises), lots promotionnels, blocs Vigi.
+    'disjoncteurs-schneider': Family(
+        label='Disjoncteurs Schneider', brand='Schneider Electric', keyword='disjoncteur',
+        excluded=BREAKER_EXCLUDED, sku_pattern=r'SCH-?([A-Z0-9]+)', elec123_url=('/schneider-', 'disjoncteur'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/147-disjoncteurs-schneider',)),
+    'differentiels-schneider': Family(
+        label='Interrupteurs différentiels Schneider', brand='Schneider Electric', keyword=RCD_KEYWORDS,
+        excluded=BREAKER_EXCLUDED, sku_pattern=r'SCH-?([A-Z0-9]+)', elec123_url=('/schneider-', 'differentiel'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/150-interrupteurs-differentiels-schneider',)),
+    'disjoncteurs-hager': Family(
+        label='Disjoncteurs Hager', brand='Hager', keyword='disjoncteur',
+        excluded=BREAKER_EXCLUDED, sku_pattern=r'HAG-?([A-Z0-9]+)', elec123_url=('/hager-', 'disjoncteur'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/265-disjoncteurs-hager',)),
+    'differentiels-hager': Family(
+        label='Interrupteurs différentiels Hager', brand='Hager', keyword=RCD_KEYWORDS,
+        excluded=BREAKER_EXCLUDED, sku_pattern=r'HAG-?([A-Z0-9]+)', elec123_url=('/hager-', 'differentiel'),
+        elecdistrib_categories=('https://www.elecdistrib.fr/260-interrupteurs-differentiels-hager',)),
     # Yokis : 123 Elec seulement. Elec Distrib n'en vend que 3, sans marque dans les données produit
     # et sous une autre référence (LUM-5454062 au lieu de MTV500M).
     'yokis': Family(
@@ -208,7 +247,8 @@ FAMILIES = {
 }
 
 PACK = re.compile(r'\b(?:lot|pack|bo[iî]te|sachet)\s+de\s+(\d+)\b', re.I)
-CATEGORY_PRODUCT = re.compile(r'href="(https://www\.elecdistrib\.fr/[^"]+-(\d{6})-(\d{13})\.html)"')
+# Référence avant l'EAN : 6 chiffres (Legrand) ou alphanumérique (Schneider a9f76216, Hager mfn702).
+CATEGORY_PRODUCT = re.compile(r'href="(https://www\.elecdistrib\.fr/[^"]+-([a-z0-9]+)-(\d{13})\.html)"')
 CATEGORY_PAGE = re.compile(r'\?page=(\d+)')
 
 
@@ -268,7 +308,7 @@ def identify(html, family):
     product = products[0]
     brand = product.get('brand', {})
     brand = brand.get('name', '') if isinstance(brand, dict) else brand
-    if str(brand).casefold() != family.brand.casefold():
+    if not same_brand(brand, family.brand):
         raise OfferError('Autre marque')
     name = ' '.join(str(product.get('name') or title).split())
     pack = PACK.search(f'{title} {name}')
