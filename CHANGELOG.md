@@ -1,5 +1,9 @@
 # Historique
 
+## 1.37.0 — 2026-11-15
+
+- Nouvel onglet « Théorie » : règles amont / aval et sélectivité, principe des disjoncteurs, courbes de déclenchement, différentiels et leurs types, sectionneurs et interrupteurs, calculs de base (intensité, section, chute de tension) et foisonnement, avec sommaire cliquable et exemples chiffrés. Valide ces changements avec 216 tests automatisés.
+
 ## 1.36.0 — 2026-11-15
 
 - Menu « Familles » : niveau marque pour toutes les familles (domaine → type de produit → marque), même quand une seule marque est proposée ; Appareillage → Legrand → gamme, Domotique → Yokis. Valide ces changements avec 215 tests automatisés.

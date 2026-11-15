@@ -138,7 +138,7 @@ def test_settings_sections_and_theme_persistence(app, tmp_path):
     db = Store(path)
     window = MainWindow(db, 'test')
     window.show()
-    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique']
+    assert [window.tabs.tabText(i) for i in range(window.tabs.count())] == ['Matériel', 'Paramètres', 'Calcul électrique', 'Théorie']
     assert [window.settings_sections.tabText(i) for i in range(window.settings_sections.count())] == [
         'Apparence', 'Lieux', 'Fournisseurs', 'Offres et historique', 'Listes', 'Affichage et TVA', 'Comparaison', 'Livraison', 'Catalogue']
     assert window.theme_selector.currentText() == DEFAULT_THEME
@@ -638,3 +638,11 @@ def test_help_button_and_reference_export(app, store, tmp_path):
                                    'name': 'Disjoncteur iC60N 1P 10A C', 'url': 'https://www.123elec.com/x.html',
                                    'sku': 'SCHA9F77210', 'ean': '3606480087788',
                                    'title': 'Disjoncteur A9F77210', 'discovered_at': '2026-11-15'}]
+
+
+def test_theory_tab_sections(app, store):
+    window = MainWindow(store, 'test')
+    text = window.theory_page.content.toPlainText()
+    for title in ('Amont et aval', 'Disjoncteurs', 'Courbes', 'Différentiels', 'Sectionneurs', 'Calculs', 'Foisonnement'):
+        assert title in text
+    assert 'tu ' not in text.casefold()  # vouvoiement uniquement
