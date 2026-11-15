@@ -24,6 +24,7 @@ from .shipping_ui import ShippingPanel
 from .electrical_ui import ElectricalPage
 from .catalog_ui import CatalogPage
 from .theory import TheoryPage
+from .norm import NormPage
 from .family_menu import FamilyButton
 from .comparison import amounts, now
 from .comparison_ui import ComparisonWorker, euros, local_date, render_report
@@ -423,6 +424,8 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.electrical_page, 'Calcul électrique')
         self.theory_page = TheoryPage()
         tabs.addTab(self.theory_page, 'Théorie')
+        self.norm_page = NormPage(store)
+        tabs.addTab(self.norm_page, 'Norme')
         self.material_model.modelReset.connect(self.electrical_page.refresh)
         help_page = QWidget()
         help_layout = QVBoxLayout(help_page)
