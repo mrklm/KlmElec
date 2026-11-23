@@ -1,10 +1,25 @@
-# KlmElec — v1.39.0
+# KlmElec — v1.39.1
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
 ## Installation et lancement
 
 Python **3.11 ou supérieur**.
+
+### Installation sur un poste (Linux)
+
+Pour utiliser l’application sans environnement de développement, avec un raccourci dans le menu des applications :
+
+```sh
+sudo apt install pipx && pipx ensurepath   # une seule fois par poste
+git clone https://github.com/mrklm/KlmElec.git
+cd KlmElec
+./install.sh
+```
+
+Mise à jour : `git pull` puis `./install.sh`. Désinstallation : `./install.sh --desinstaller` (la base locale est conservée). L’application fonctionne hors ligne ; seules la comparaison des prix et la recherche du catalogue nécessitent Internet. Le catalogue découvert, les fournisseurs et les préférences sont propres à chaque poste.
+
+### Développement
 
 ```sh
 python3 -m venv .venv

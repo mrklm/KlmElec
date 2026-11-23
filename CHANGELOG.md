@@ -1,5 +1,9 @@
 # Historique
 
+## 1.39.1 — 2026-11-23
+
+- Script `install.sh` : installation sur un poste Linux avec pipx, raccourci et icône dans le menu des applications, mise à jour et désinstallation (`--desinstaller`, base locale conservée). README : procédure d’installation sur plusieurs postes.
+
 ## 1.39.0 — 2026-11-15
 
 - Page principale : cartes Livraison et Total réduites d’un tiers en hauteur.
