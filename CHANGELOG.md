@@ -1,5 +1,10 @@
 # Historique
 
+## 1.40.0 — 2026-11-23
+
+- Releases GitHub automatiques à chaque tag : AppImage Linux, archive Windows et image disque macOS (Apple Silicon), construites avec PyInstaller ; notes de version reprises du CHANGELOG.
+- Icônes carrées sur fond transparent (`.ico` multi-tailles, `.icns`, `.png` 512 px) générées depuis le logo par `packaging/make_icons.py`.
+
 ## 1.39.1 — 2026-11-23
 
 - Script `install.sh` : installation sur un poste Linux avec pipx, raccourci et icône dans le menu des applications, mise à jour et désinstallation (`--desinstaller`, base locale conservée). README : procédure d’installation sur plusieurs postes.

@@ -1,10 +1,20 @@
-# KlmElec — v1.39.1
+# KlmElec — v1.40.0
 
 Application de bureau Python/PySide6 pour préparer une liste de matériel électrique, comparer les prix et vérifier des critères de dimensionnement des différentiels.
 
 ## Installation et lancement
 
 Python **3.11 ou supérieur**.
+
+### Exécutables (Linux, Windows, macOS)
+
+Chaque version publiée propose sur la page **Releases** du dépôt des fichiers prêts à l’emploi, sans Python à installer :
+
+- **Linux** : `KlmElec-X.Y.Z-x86_64.AppImage`. Rendez-le exécutable (`chmod +x`), puis lancez-le d’un double-clic.
+- **Windows** : `KlmElec-X.Y.Z-windows-x64.zip`. Décompressez l’archive, puis lancez `KlmElec\KlmElec.exe`. L’application n’est pas signée : SmartScreen demande « Informations complémentaires → Exécuter quand même ».
+- **macOS (Apple Silicon)** : `KlmElec-X.Y.Z-macos-arm64.dmg`. Glissez KlmElec dans Applications. L’application n’est pas signée : au premier lancement, faites clic droit → Ouvrir (ou `xattr -dr com.apple.quarantine /Applications/KlmElec.app`).
+
+Les fichiers sont construits par GitHub Actions (`.github/workflows/release.yml`) à chaque tag `vX.Y.Z`, avec PyInstaller (`packaging/klmelec.spec`). Les icônes de `packaging/icons/` se régénèrent depuis le logo avec `python3 packaging/make_icons.py` (Pillow requis).
 
 ### Installation sur un poste (Linux)
 

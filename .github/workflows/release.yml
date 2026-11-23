@@ -1,0 +1,85 @@
+# Construit KlmElec pour Linux (AppImage), Windows (zip) et macOS (dmg).
+# Un tag vX.Y.Z publie une release GitHub avec ces fichiers ; un lancement manuel ne fait que les construire.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux
+          - os: windows-latest
+            target: windows
+          - os: macos-latest
+            target: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Dépendances système (Linux)
+        if: matrix.target == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libxcb-cursor0 libegl1 file
+
+      - name: Installation
+        run: python -m pip install . "pyinstaller>=6.10,<7"
+
+      - name: PyInstaller
+        run: pyinstaller --noconfirm packaging/klmelec.spec
+
+      - name: AppImage (Linux)
+        if: matrix.target == 'linux'
+        run: |
+          curl -sSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          packaging/build_appimage.sh ./appimagetool
+          mkdir out && mv dist/*.AppImage out/
+
+      - name: Archive zip (Windows)
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION).Trim()
+          New-Item -ItemType Directory out | Out-Null
+          Compress-Archive -Path dist/KlmElec -DestinationPath "out/KlmElec-$version-windows-x64.zip"
+
+      - name: Image disque (macOS)
+        if: matrix.target == 'macos'
+        run: |
+          mkdir out
+          hdiutil create -volname KlmElec -srcfolder dist/KlmElec.app -ov -format UDZO "out/KlmElec-$(cat VERSION)-macos-arm64.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: klmelec-${{ matrix.target }}
+          path: out/*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Notes de version (CHANGELOG)
+        run: awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## "v" " {f=1; next} /^## / {f=0} f' CHANGELOG.md > notes.md
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          body_path: notes.md
