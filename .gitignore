@@ -8,3 +8,4 @@ local-study/
 *.egg-info/
 build/
 dist/
+/*.json
