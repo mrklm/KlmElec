@@ -1,5 +1,10 @@
 # Historique
 
+## 1.41.0 — 2026-11-26
+
+- Carte Total : pendant la recherche des prix (bouton ou chargement d’une liste), barre de progression et compteur « Recherche des prix… 7 / 24 » à la place du total ; « Annulation en cours… » après une annulation.
+- Carte Livraison : montant restant avant la livraison gratuite affiché en rouge. Valide ces changements avec 217 tests automatisés.
+
 ## 1.40.0 — 2026-11-23
 
 - Releases GitHub automatiques à chaque tag : AppImage Linux, archive Windows et image disque macOS (Apple Silicon), construites avec PyInstaller ; notes de version reprises du CHANGELOG.

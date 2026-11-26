@@ -272,7 +272,7 @@ def test_cancel_save_file_keeps_window_open(app, store, monkeypatch):
 
 def test_shipping_thresholds_per_supplier(app, store):
     from decimal import Decimal
-    from klmelec.shipping_ui import FREE
+    from klmelec.shipping_ui import FREE, MISSING
     window = MainWindow(store, 'test')
     panel = window.shipping_panel
     lines = lambda: [label.text() for label in panel.lines]
@@ -300,6 +300,7 @@ def test_shipping_thresholds_per_supplier(app, store):
     assert FREE in panel.lines[0].styleSheet()
     panel.set_subtotals({first: (Decimal('200'), Decimal('240')), second: (Decimal('100'), Decimal('120.45'))})
     assert lines() == ['123 Elec : livraison gratuite dans 50,00 €', 'Elec Distrib : livraison gratuite dans 29,55 €']
+    assert all(MISSING in line.styleSheet() for line in panel.lines)
     # Case « Afficher les infos de livraison » : cochée par défaut, mémorisée.
     window.show()
     assert panel.show_info.isChecked() and panel.isVisible()
@@ -455,6 +456,8 @@ def test_background_comparison_and_history(app, store, monkeypatch):
     entered, release = Event(), Event()
 
     def fake_compare(items, suppliers, previous, progress, cancelled, **kwargs):
+        progress('411617 — 123 Elec')
+        progress('411617 — Elec Distrib')
         entered.set()
         while not release.is_set() and not cancelled():
             time.sleep(.005)
@@ -478,6 +481,11 @@ def test_background_comparison_and_history(app, store, monkeypatch):
     assert not window.material_table.isEnabled()
     assert not window.load_list_button.isEnabled()
     assert window.cancel_button.isEnabled()
+    # Carte Total : barre de progression à la place du total pendant la recherche.
+    QTest.qWait(20)
+    assert window.progress_bar.isVisible() and not window.total_label.isVisible()
+    assert window.progress_bar.maximum() == 2 and window.progress_bar.value() == 1
+    assert window.progress_label.text() == 'Recherche des prix…\n1 / 2'
     # Qt can still process events while HTTP is pending.
     window.tabs.setCurrentIndex(1)
     window.settings_sections.setCurrentIndex(3)
@@ -490,6 +498,7 @@ def test_background_comparison_and_history(app, store, monkeypatch):
         if window.worker is None:
             break
     assert window.worker is None
+    assert window.total_label.isVisible() and not window.progress_bar.isVisible()
     assert '24,00' in window.summary.text()
     assert len(store.comparisons()) == 1
     assert window.material_table.isEnabled()

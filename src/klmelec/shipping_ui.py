@@ -14,6 +14,7 @@ from .comparison_ui import euros
 
 
 FREE = '#2e9e44'  # vert lisible sur les thèmes clairs et sombres
+MISSING = '#d6453d'  # rouge lisible sur les thèmes clairs et sombres
 
 
 class ShippingPanel(QFrame):
@@ -125,7 +126,7 @@ class ShippingPanel(QFrame):
             if missing <= 0:
                 self.add_line(f'{name} : livraison gratuite', tip, FREE)
             else:
-                self.add_line(f'{name} : livraison gratuite dans {euros(missing)}', tip)
+                self.add_line(f'{name} : livraison gratuite dans {euros(missing)}', tip, MISSING)
 
     def add_line(self, text, tip='', colour=None):
         label = QLabel(text)

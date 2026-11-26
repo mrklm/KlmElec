@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QDialog, QDialogButtonBox, QFormLayout, QLineEdit,
     QCheckBox, QTabWidget, QAbstractItemView,
     QTextBrowser, QDoubleSpinBox, QTreeView, QListWidget, QFileDialog,
-    QGridLayout, QToolButton, QListView, QListWidgetItem, QFrame,
+    QGridLayout, QToolButton, QListView, QListWidgetItem, QFrame, QProgressBar,
 )
 
 from .data import Store, matches
@@ -265,6 +265,17 @@ class MainWindow(QMainWindow):
         self.total_label.setStyleSheet('font-size: 17px; font-weight: 600;')
         total_layout.addWidget(self.total_label)
         self.total_label.setToolTip('Somme des offres retenues multipliées par les quantités. Hors livraison.')
+        # Affiché à la place du total pendant la recherche des prix.
+        self.progress_label = QLabel()
+        self.progress_label.setAlignment(Qt.AlignCenter)
+        self.progress_label.setMinimumWidth(180)
+        self.progress_label.setStyleSheet('font-size: 14px; font-weight: 600;')
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(8)
+        total_layout.addWidget(self.progress_label)
+        total_layout.addWidget(self.progress_bar)
+        self.show_progress(False)
         cards_layout.addWidget(self.total_card, 2)
         footer.addWidget(self.summary_cards, 0, Qt.AlignBottom)
         tabs.addTab(material, 'Matériel')
@@ -729,6 +740,8 @@ class MainWindow(QMainWindow):
         self.cancel_button.setEnabled(True)
         self.worker = ComparisonWorker(items, suppliers, previous, self, links=self.store.product_links())
         self.worker.progress.connect(self.statusBar().showMessage)
+        self.worker.step.connect(self.comparison_step)
+        self.show_progress(True)
         self.worker.completed.connect(self.comparison_ready)
         self.worker.failed.connect(self.comparison_failed)
         self.worker.finished.connect(self.comparison_finished)
@@ -761,7 +774,23 @@ class MainWindow(QMainWindow):
         self.load_history()
         self.statusBar().showMessage(message)
 
+    def show_progress(self, running):
+        self.total_label.setVisible(not running)
+        self.progress_label.setVisible(running)
+        self.progress_bar.setVisible(running)
+        if running:
+            self.progress_bar.setRange(0, 0)  # animation continue tant que le total n'est pas connu
+            self.progress_label.setText('Recherche des prix…')
+
+    def comparison_step(self, done, total):
+        if self.worker and self.worker.isInterruptionRequested():
+            return
+        self.progress_bar.setRange(0, max(total, 1))
+        self.progress_bar.setValue(done)
+        self.progress_label.setText(f'Recherche des prix…\n{done} / {total}')
+
     def comparison_finished(self):
+        self.show_progress(False)
         for widget in self.busy_widgets:
             widget.setEnabled(True)
         self.cancel_button.setEnabled(False)
@@ -775,6 +804,8 @@ class MainWindow(QMainWindow):
         if self.worker:
             self.worker.requestInterruption()
             self.cancel_button.setEnabled(False)
+            self.progress_bar.setRange(0, 0)
+            self.progress_label.setText('Annulation en cours…')
             self.statusBar().showMessage('Annulation demandée — attente de la requête en cours (délai réseau : 15 s).')
 
     def discovery_finished(self):
